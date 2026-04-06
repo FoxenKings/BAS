@@ -1,0 +1,442 @@
+/* ============================================================
+   improvements.css — Дополнительные улучшения UI/UX
+   inventory_bot_V11
+   ============================================================ */
+
+/* ── Переменные улучшений ────────────────────────────────── */
+:root {
+    --card-accent-h: 4px;
+    --transition-fast: 0.15s ease;
+    --transition-med:  0.25s ease;
+    --badge-pulse-color: rgba(220, 53, 69, 0.4);
+    --skeleton-base: #e9ecef;
+    --skeleton-shine: #f8f9fa;
+}
+
+/* ── Дашборд: улучшенные карточки статистики ─────────────── */
+.stat-card {
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--transition-med), box-shadow var(--transition-med);
+    border: none;
+    border-radius: 12px;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: var(--card-accent-h);
+    background: var(--card-accent, var(--gradient-primary));
+    border-radius: 12px 12px 0 0;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+}
+
+.stat-card .card-body {
+    padding-top: calc(1.25rem + var(--card-accent-h));
+}
+
+.stat-card.stat-success { --card-accent: var(--gradient-success); }
+.stat-card.stat-warning { --card-accent: var(--gradient-warning); }
+.stat-card.stat-danger  { --card-accent: var(--gradient-danger); }
+.stat-card.stat-info    { --card-accent: var(--gradient-info); }
+.stat-card.stat-primary { --card-accent: var(--gradient-primary); }
+
+/* Число на карточке */
+.stat-card .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -1px;
+}
+
+/* Иконка карточки */
+.stat-card .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    opacity: 0.85;
+}
+
+/* ── Таблицы: hover и sticky ─────────────────────────────── */
+.table-improved tbody tr {
+    transition: background-color var(--transition-fast),
+                box-shadow var(--transition-fast);
+    cursor: default;
+}
+
+.table-improved tbody tr:hover {
+    background-color: rgba(52, 152, 219, 0.06) !important;
+    box-shadow: inset 3px 0 0 var(--secondary-color);
+}
+
+/* Закреплённая первая колонка */
+.table-sticky-first thead th:first-child,
+.table-sticky-first tbody td:first-child {
+    position: sticky;
+    left: 0;
+    background: inherit;
+    z-index: 1;
+    box-shadow: 2px 0 4px rgba(0,0,0,0.06);
+}
+
+/* Горизонтальный скролл на мобильных */
+.table-responsive-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+}
+
+/* ── Статусные бейджи с анимацией ────────────────────────── */
+.badge-animated {
+    position: relative;
+}
+
+.badge-animated.bg-success::after,
+.badge-animated.bg-danger::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    animation: badge-pulse 2.4s ease-out infinite;
+}
+
+.badge-animated.bg-success::after {
+    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.5);
+    animation-name: badge-pulse-success;
+}
+
+.badge-animated.bg-danger::after {
+    box-shadow: 0 0 0 0 var(--badge-pulse-color);
+    animation-name: badge-pulse-danger;
+}
+
+@keyframes badge-pulse-success {
+    0%   { box-shadow: 0 0 0 0 rgba(40,167,69,0.5); }
+    70%  { box-shadow: 0 0 0 6px rgba(40,167,69,0); }
+    100% { box-shadow: 0 0 0 0 rgba(40,167,69,0); }
+}
+
+@keyframes badge-pulse-danger {
+    0%   { box-shadow: 0 0 0 0 var(--badge-pulse-color); }
+    70%  { box-shadow: 0 0 0 6px rgba(220,53,69,0); }
+    100% { box-shadow: 0 0 0 0 rgba(220,53,69,0); }
+}
+
+/* ── Счётчик уведомлений — пульсация ─────────────────────── */
+.notification-badge {
+    animation: badge-pulse-danger 2s ease infinite;
+}
+
+/* ── Skeleton loading ────────────────────────────────────── */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--skeleton-base) 25%,
+        var(--skeleton-shine) 50%,
+        var(--skeleton-base) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s infinite;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+@keyframes skeleton-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-row td {
+    padding: 10px 8px;
+}
+
+.skeleton-cell {
+    height: 14px;
+    width: 80%;
+    border-radius: 4px;
+}
+
+.skeleton-cell.w-40  { width: 40%; }
+.skeleton-cell.w-60  { width: 60%; }
+.skeleton-cell.w-100 { width: 100%; }
+
+/* ── Боковая панель: плавные переходы ───────────────────── */
+.sidebar-nav .nav-link {
+    transition: background-color var(--transition-fast),
+                padding-left var(--transition-fast),
+                color var(--transition-fast);
+    border-radius: 8px;
+    margin: 1px 4px;
+}
+
+.sidebar-nav .nav-link:hover,
+.sidebar-nav .nav-link.active {
+    padding-left: 1.2rem;
+}
+
+/* ── Форма поиска: улучшенный вид ───────────────────────── */
+.search-input-group {
+    position: relative;
+}
+
+.search-input-group .form-control {
+    padding-left: 2.5rem;
+    border-radius: 8px;
+    transition: box-shadow var(--transition-med),
+                border-color var(--transition-med);
+}
+
+.search-input-group .form-control:focus {
+    box-shadow: 0 0 0 3px rgba(52,152,219,0.18);
+    border-color: var(--secondary-color);
+}
+
+.search-input-group .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #adb5bd;
+    pointer-events: none;
+    z-index: 4;
+}
+
+/* ── Кнопки: улучшенные состояния ───────────────────────── */
+.btn {
+    transition: transform var(--transition-fast),
+                box-shadow var(--transition-fast),
+                filter var(--transition-fast);
+}
+
+.btn:active:not(:disabled) {
+    transform: scale(0.97);
+}
+
+.btn-primary:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow: 0 4px 12px rgba(52,152,219,0.35);
+}
+
+.btn-success:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow: 0 4px 12px rgba(40,167,69,0.35);
+}
+
+.btn-danger:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow: 0 4px 12px rgba(220,53,69,0.35);
+}
+
+/* ── Пагинация: крупнее и удобнее ───────────────────────── */
+.pagination .page-link {
+    border-radius: 8px !important;
+    margin: 0 2px;
+    min-width: 36px;
+    text-align: center;
+    transition: background-color var(--transition-fast),
+                box-shadow var(--transition-fast);
+}
+
+.pagination .page-item.active .page-link {
+    box-shadow: 0 4px 8px rgba(52,152,219,0.3);
+}
+
+/* ── Флэш-уведомления ───────────────────────────────────── */
+.flash-container .alert {
+    border: none;
+    border-left: 4px solid;
+    border-radius: 8px;
+    animation: flash-slide-in var(--transition-med) ease-out;
+}
+
+.flash-container .alert-success { border-left-color: var(--success-color); }
+.flash-container .alert-danger  { border-left-color: var(--danger-color); }
+.flash-container .alert-warning { border-left-color: var(--warning-color); }
+.flash-container .alert-info    { border-left-color: var(--info-color); }
+
+@keyframes flash-slide-in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Прогресс-бар остатков ──────────────────────────────── */
+.stock-progress {
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: #e9ecef;
+}
+
+.stock-progress-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s ease;
+}
+
+.stock-progress-bar.ok      { background: var(--success-color); }
+.stock-progress-bar.low     { background: var(--warning-color); }
+.stock-progress-bar.critical{ background: var(--danger-color); }
+
+/* ── Мобильная адаптация ────────────────────────────────── */
+@media (max-width: 768px) {
+    .stat-card .stat-value {
+        font-size: 1.5rem;
+    }
+
+    /* Скрыть второстепенные колонки таблиц */
+    .table-mobile-hide {
+        display: none;
+    }
+
+    /* Уменьшить отступы таблиц */
+    .table td, .table th {
+        padding: 0.5rem 0.4rem;
+        font-size: 0.85rem;
+    }
+
+    /* Боковая панель — оверлей */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+    }
+}
+
+/* ── Тёмный режим (prefers-color-scheme) ─────────────────── */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --skeleton-base: #2d3748;
+        --skeleton-shine: #3d4a5c;
+    }
+
+    .skeleton {
+        background: linear-gradient(
+            90deg,
+            var(--skeleton-base) 25%,
+            var(--skeleton-shine) 50%,
+            var(--skeleton-base) 75%
+        );
+        background-size: 200% 100%;
+        animation: skeleton-shimmer 1.4s infinite;
+    }
+}
+
+/* ── Индикатор загрузки страницы ─────────────────────────── */
+#page-loader {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    width: 0;
+    background: linear-gradient(90deg, var(--secondary-color), #667eea);
+    z-index: 9999;
+    transition: width 0.3s ease;
+}
+
+#page-loader.loading {
+    width: 70%;
+}
+
+#page-loader.done {
+    width: 100%;
+    opacity: 0;
+    transition: width 0.2s ease, opacity 0.4s ease 0.1s;
+}
+
+/* ── Улучшенные карточки (общие) ─────────────────────────── */
+.card {
+    border-radius: 10px;
+    transition: box-shadow var(--transition-med);
+}
+
+.card:hover {
+    box-shadow: var(--shadow-hover, 0 8px 24px rgba(0,0,0,0.08));
+}
+
+/* ── Tooltip-подсказки ──────────────────────────────────── */
+[data-bs-toggle="tooltip"] {
+    cursor: help;
+}
+
+/* ── Accordion: плавное открытие ────────────────────────── */
+.accordion-collapse {
+    transition: height var(--transition-med);
+}
+
+/* ── Иконки статусов ────────────────────────────────────── */
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.status-dot.in_stock   { background: var(--success-color); }
+.status-dot.in_use     { background: var(--secondary-color); }
+.status-dot.repair     { background: var(--warning-color); }
+.status-dot.written_off{ background: #6c757d; }
+.status-dot.lost       { background: var(--danger-color); }
+
+/* ── Линия прогресса вверху (глобальная) ─────────────────── */
+@keyframes top-progress {
+    0%   { width: 0%; opacity: 1; }
+    80%  { width: 85%; opacity: 1; }
+    100% { width: 100%; opacity: 0; }
+}
+
+.top-progress-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #3498db, #9b59b6);
+    z-index: 9999;
+    animation: top-progress 0.8s ease forwards;
+}
+
+/* ── Кнопка "наверх" ────────────────────────────────────── */
+#scroll-top-btn {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--secondary-color);
+    color: #fff;
+    border: none;
+    box-shadow: 0 4px 12px rgba(52,152,219,0.4);
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity var(--transition-med), transform var(--transition-med);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#scroll-top-btn.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#scroll-top-btn:hover {
+    background: #2980b9;
+    box-shadow: 0 6px 16px rgba(52,152,219,0.5);
+}

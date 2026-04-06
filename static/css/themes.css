@@ -1,0 +1,1201 @@
+/* ================================================================
+   themes.css — Система тем inventory_bot_V11
+   6 тем: light · dark · ocean · sunset · forest · corporate
+   ================================================================ */
+
+/* ── Базовые токены (тема по умолчанию = light) ─────────────── */
+:root {
+    /* Body / Layout */
+    --th-body-bg:          #f1f5f9;
+    --th-body-text:        #1e293b;
+    --th-body-muted:       #64748b;
+    --th-heading:          #0f172a;
+
+    /* Navbar */
+    --th-navbar-bg:        linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    --th-navbar-text:      rgba(255,255,255,0.92);
+    --th-navbar-sub:       rgba(255,255,255,0.55);
+
+    /* Cards */
+    --th-card-bg:          #ffffff;
+    --th-card-border:      rgba(0,0,0,0.07);
+    --th-card-shadow:      0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --th-card-shadow-hover:0 8px 24px rgba(0,0,0,0.10);
+    --th-card-header-bg:   #f8fafc;
+    --th-card-header-border: rgba(0,0,0,0.06);
+
+    /* Inputs */
+    --th-input-bg:         #ffffff;
+    --th-input-border:     #e2e8f0;
+    --th-input-text:       #1e293b;
+    --th-input-placeholder:#94a3b8;
+    --th-input-focus-ring: rgba(99,102,241,0.25);
+
+    /* Tables */
+    --th-table-stripe:     rgba(0,0,0,0.02);
+    --th-table-hover:      rgba(99,102,241,0.05);
+    --th-table-border:     rgba(0,0,0,0.06);
+
+    /* Dropdowns / Modals */
+    --th-dropdown-bg:      #ffffff;
+    --th-dropdown-border:  rgba(0,0,0,0.08);
+    --th-dropdown-hover:   #f1f5f9;
+    --th-modal-bg:         #ffffff;
+    --th-modal-overlay:    rgba(15,23,42,0.5);
+
+    /* Misc */
+    --th-hr:               rgba(0,0,0,0.07);
+    --th-code-bg:          #f8fafc;
+    --th-scrollbar:        #cbd5e1;
+    --th-scrollbar-hover:  #94a3b8;
+    --th-footer-bg:        #f8fafc;
+    --th-footer-border:    rgba(0,0,0,0.06);
+    --th-badge-bg:         #f1f5f9;
+    --th-badge-text:       #475569;
+
+    /* Accent palette */
+    --th-accent:           #6366f1;
+    --th-accent-hover:     #4f46e5;
+    --th-accent-light:     rgba(99,102,241,0.10);
+    --th-accent2:          #22c55e;
+    --th-accent3:          #f59e0b;
+
+    /* Stat cards — top-border gradient */
+    --th-stat-1: linear-gradient(90deg,#6366f1,#8b5cf6);  /* indigo-purple */
+    --th-stat-2: linear-gradient(90deg,#3b82f6,#06b6d4);  /* blue-cyan */
+    --th-stat-3: linear-gradient(90deg,#22c55e,#10b981);  /* green-teal */
+    --th-stat-4: linear-gradient(90deg,#a855f7,#ec4899);  /* purple-pink */
+
+    /* Sidebar (override --sb-* from sidebar.css) */
+    --sb-bg:               #ffffff;
+    --sb-border:           #f0f1f3;
+    --sb-text:             #475569;
+    --sb-text-muted:       #94a3b8;
+    --sb-active-bg:        #eff6ff;
+    --sb-active-text:      #1d4ed8;
+    --sb-active-border:    #3b82f6;
+    --sb-hover-bg:         #f8fafc;
+    --sb-section-color:    #cbd5e1;
+
+    /* Chart colors */
+    --th-chart-1: #6366f1;
+    --th-chart-2: #22c55e;
+    --th-chart-3: #f59e0b;
+    --th-chart-4: #ef4444;
+    --th-chart-5: #06b6d4;
+    --th-chart-grid: rgba(0,0,0,0.06);
+    --th-chart-label: #64748b;
+}
+
+/* ── Применение токенов ─────────────────────────────────────── */
+body {
+    background-color: var(--th-body-bg) !important;
+    color: var(--th-body-text) !important;
+    transition: background-color 0.3s ease, color 0.2s ease;
+}
+
+/* Плавные переходы при смене темы */
+.card, .card-header, .card-footer, .card-body {
+    transition: background-color 0.3s ease, border-color 0.25s ease,
+                box-shadow 0.25s ease, color 0.2s ease;
+}
+.navbar { transition: background 0.3s ease !important; }
+.sidebar { transition: background-color 0.3s ease; }
+.dropdown-menu { transition: background-color 0.25s ease; }
+.form-control, .form-select, .input-group-text {
+    transition: background-color 0.25s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.table, .table > :not(caption) > * > * {
+    transition: background-color 0.25s ease, color 0.2s ease;
+}
+.modal-content { transition: background-color 0.3s ease; }
+
+/* Предотвращение перехода при первой загрузке (класс на <html>) */
+html.no-theme-transition *,
+html.no-theme-transition body {
+    transition: none !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--th-scrollbar); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--th-scrollbar-hover); }
+
+/* Navbar */
+.navbar {
+    background: var(--th-navbar-bg) !important;
+}
+.navbar .navbar-brand,
+.navbar .topbar-notif,
+.navbar .topbar-user-name,
+.navbar .topbar-role-badge,
+.topbar-user,
+.navbar .fa,
+.navbar .fas,
+.navbar .topbar-avatar {
+    color: var(--th-navbar-text) !important;
+}
+
+/* Cards */
+.card {
+    background: var(--th-card-bg) !important;
+    border-color: var(--th-card-border) !important;
+    box-shadow: var(--th-card-shadow) !important;
+}
+.card:hover { box-shadow: var(--th-card-shadow-hover) !important; }
+
+.card-header {
+    background: var(--th-card-header-bg) !important;
+    border-bottom-color: var(--th-card-header-border) !important;
+    color: var(--th-heading) !important;
+}
+
+.card-footer {
+    background: var(--th-card-header-bg) !important;
+    border-top-color: var(--th-card-header-border) !important;
+}
+
+/* Text */
+h1,h2,h3,h4,h5,h6,
+.fw-bold, .fw-semibold { color: var(--th-heading) !important; }
+.text-muted { color: var(--th-body-muted) !important; }
+
+/* Tables */
+.table {
+    color: var(--th-body-text) !important;
+    border-color: var(--th-table-border) !important;
+}
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: var(--th-table-stripe) !important;
+}
+.table-hover > tbody > tr:hover > * {
+    background-color: var(--th-table-hover) !important;
+    color: var(--th-body-text) !important;
+}
+.table > :not(caption) > * > * {
+    border-bottom-color: var(--th-table-border) !important;
+}
+.table thead th {
+    background: var(--th-card-header-bg) !important;
+    color: var(--th-body-muted) !important;
+    border-color: var(--th-table-border) !important;
+}
+
+/* Inputs */
+.form-control, .form-select {
+    background-color: var(--th-input-bg) !important;
+    border-color: var(--th-input-border) !important;
+    color: var(--th-input-text) !important;
+}
+.form-control::placeholder { color: var(--th-input-placeholder) !important; }
+.form-control:focus, .form-select:focus {
+    border-color: var(--th-accent) !important;
+    box-shadow: 0 0 0 3px var(--th-input-focus-ring) !important;
+}
+.input-group-text {
+    background: var(--th-card-header-bg) !important;
+    border-color: var(--th-input-border) !important;
+    color: var(--th-body-muted) !important;
+}
+
+/* Dropdowns */
+.dropdown-menu {
+    background-color: var(--th-dropdown-bg) !important;
+    border-color: var(--th-dropdown-border) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+}
+.dropdown-item {
+    color: var(--th-body-text) !important;
+}
+.dropdown-item:hover, .dropdown-item:focus {
+    background-color: var(--th-dropdown-hover) !important;
+}
+.dropdown-divider { border-color: var(--th-hr) !important; }
+
+/* Modals */
+.modal-content {
+    background-color: var(--th-modal-bg) !important;
+    border-color: var(--th-card-border) !important;
+}
+.modal-header, .modal-footer {
+    border-color: var(--th-hr) !important;
+    background: var(--th-card-header-bg) !important;
+}
+.modal-backdrop { --bs-backdrop-bg: var(--th-modal-overlay); }
+
+/* Pagination */
+.page-link {
+    background-color: var(--th-card-bg) !important;
+    border-color: var(--th-input-border) !important;
+    color: var(--th-body-text) !important;
+}
+.page-item.active .page-link {
+    background-color: var(--th-accent) !important;
+    border-color: var(--th-accent) !important;
+    color: #fff !important;
+}
+
+/* Badges */
+.badge.bg-light {
+    background-color: var(--th-badge-bg) !important;
+    color: var(--th-badge-text) !important;
+}
+
+/* HR */
+hr { border-color: var(--th-hr) !important; }
+
+/* Code */
+code, pre, .text-code {
+    background-color: var(--th-code-bg) !important;
+    color: var(--th-accent) !important;
+}
+
+/* Footer */
+.footer {
+    background-color: var(--th-footer-bg) !important;
+    border-top-color: var(--th-footer-border) !important;
+}
+
+/* Stat card top borders */
+.stat-card.stat-primary  { --card-accent: var(--th-stat-1); }
+.stat-card.stat-info     { --card-accent: var(--th-stat-2); }
+.stat-card.stat-success  { --card-accent: var(--th-stat-3); }
+.stat-card.stat-purple   { --card-accent: var(--th-stat-4); }
+
+/* Alerts */
+.alert {
+    background-color: var(--th-card-bg) !important;
+    border-color: var(--th-card-border) !important;
+}
+
+/* ================================================================
+   ТЕМА: DARK (Ночной режим)
+   ================================================================ */
+body.theme-dark {
+    --th-body-bg:          #0f172a;
+    --th-body-text:        #e2e8f0;
+    --th-body-muted:       #94a3b8;
+    --th-heading:          #f1f5f9;
+
+    --th-navbar-bg:        linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    --th-navbar-text:      rgba(255,255,255,0.95);
+
+    --th-card-bg:          #1e293b;
+    --th-card-border:      rgba(255,255,255,0.07);
+    --th-card-shadow:      0 1px 3px rgba(0,0,0,0.3);
+    --th-card-shadow-hover:0 8px 24px rgba(0,0,0,0.4);
+    --th-card-header-bg:   #162032;
+    --th-card-header-border: rgba(255,255,255,0.06);
+
+    --th-input-bg:         #162032;
+    --th-input-border:     rgba(255,255,255,0.12);
+    --th-input-text:       #e2e8f0;
+    --th-input-placeholder:#64748b;
+
+    --th-table-stripe:     rgba(255,255,255,0.03);
+    --th-table-hover:      rgba(99,102,241,0.12);
+    --th-table-border:     rgba(255,255,255,0.06);
+
+    --th-dropdown-bg:      #1e293b;
+    --th-dropdown-border:  rgba(255,255,255,0.10);
+    --th-dropdown-hover:   rgba(255,255,255,0.06);
+    --th-modal-bg:         #1e293b;
+
+    --th-hr:               rgba(255,255,255,0.08);
+    --th-code-bg:          #162032;
+    --th-scrollbar:        #334155;
+    --th-scrollbar-hover:  #475569;
+    --th-footer-bg:        #1e293b;
+    --th-footer-border:    rgba(255,255,255,0.06);
+    --th-badge-bg:         #334155;
+    --th-badge-text:       #94a3b8;
+
+    --th-stat-1: linear-gradient(90deg,#818cf8,#a78bfa);
+    --th-stat-2: linear-gradient(90deg,#60a5fa,#38bdf8);
+    --th-stat-3: linear-gradient(90deg,#4ade80,#34d399);
+    --th-stat-4: linear-gradient(90deg,#c084fc,#f472b6);
+
+    --sb-bg:               #1e293b;
+    --sb-border:           rgba(255,255,255,0.06);
+    --sb-text:             #94a3b8;
+    --sb-text-muted:       #64748b;
+    --sb-active-bg:        rgba(99,102,241,0.15);
+    --sb-active-text:      #818cf8;
+    --sb-active-border:    #6366f1;
+    --sb-hover-bg:         rgba(255,255,255,0.05);
+    --sb-section-color:    #334155;
+
+    --th-chart-grid:       rgba(255,255,255,0.06);
+    --th-chart-label:      #64748b;
+}
+
+/* Dark: fix specific Bootstrap overrides */
+body.theme-dark .table-danger > td,
+body.theme-dark .table-warning > td {
+    color: var(--th-body-text) !important;
+}
+body.theme-dark .progress {
+    background-color: rgba(255,255,255,0.08) !important;
+}
+body.theme-dark .nav-link { color: var(--th-body-text); }
+body.theme-dark .btn-close { filter: invert(1); }
+body.theme-dark .select2-container--bootstrap-5 .select2-selection {
+    background-color: var(--th-input-bg) !important;
+    border-color: var(--th-input-border) !important;
+    color: var(--th-input-text) !important;
+}
+body.theme-dark .select2-dropdown {
+    background-color: var(--th-dropdown-bg) !important;
+    border-color: var(--th-dropdown-border) !important;
+}
+body.theme-dark .select2-results__option {
+    color: var(--th-body-text) !important;
+}
+body.theme-dark .select2-results__option--highlighted {
+    background-color: var(--th-dropdown-hover) !important;
+}
+
+/* ================================================================
+   ТЕМА: OCEAN (Океан)
+   ================================================================ */
+body.theme-ocean {
+    --th-body-bg:          #f0f9ff;
+    --th-body-text:        #0c4a6e;
+    --th-body-muted:       #0369a1;
+    --th-heading:          #082f49;
+
+    --th-navbar-bg:        linear-gradient(135deg, #0c4a6e 0%, #0e7490 100%);
+    --th-navbar-text:      rgba(255,255,255,0.95);
+
+    --th-card-bg:          #ffffff;
+    --th-card-border:      rgba(14,116,144,0.12);
+    --th-card-shadow:      0 1px 3px rgba(14,116,144,0.08);
+    --th-card-shadow-hover:0 8px 24px rgba(14,116,144,0.15);
+    --th-card-header-bg:   #f0f9ff;
+    --th-card-header-border: rgba(14,116,144,0.10);
+
+    --th-input-bg:         #ffffff;
+    --th-input-border:     #bae6fd;
+    --th-input-focus-ring: rgba(14,116,144,0.20);
+
+    --th-table-stripe:     rgba(14,116,144,0.03);
+    --th-table-hover:      rgba(14,116,144,0.06);
+    --th-table-border:     rgba(14,116,144,0.10);
+
+    --th-dropdown-bg:      #ffffff;
+    --th-dropdown-border:  #bae6fd;
+    --th-dropdown-hover:   #f0f9ff;
+
+    --th-hr:               rgba(14,116,144,0.10);
+    --th-code-bg:          #f0f9ff;
+    --th-scrollbar:        #7dd3fc;
+    --th-footer-bg:        #f0f9ff;
+    --th-badge-bg:         #e0f2fe;
+    --th-badge-text:       #0369a1;
+
+    --th-accent:           #0ea5e9;
+    --th-accent-hover:     #0284c7;
+    --th-accent-light:     rgba(14,165,233,0.10);
+
+    --th-stat-1: linear-gradient(90deg,#0ea5e9,#06b6d4);
+    --th-stat-2: linear-gradient(90deg,#06b6d4,#0891b2);
+    --th-stat-3: linear-gradient(90deg,#22d3ee,#67e8f9);
+    --th-stat-4: linear-gradient(90deg,#0ea5e9,#818cf8);
+
+    --sb-bg:               #f0f9ff;
+    --sb-border:           #bae6fd;
+    --sb-text:             #0369a1;
+    --sb-text-muted:       #7dd3fc;
+    --sb-active-bg:        #e0f2fe;
+    --sb-active-text:      #0c4a6e;
+    --sb-active-border:    #0ea5e9;
+    --sb-hover-bg:         #e0f2fe;
+    --sb-section-color:    #7dd3fc;
+
+    --th-chart-1: #0ea5e9;
+    --th-chart-2: #06b6d4;
+    --th-chart-3: #0891b2;
+    --th-chart-4: #67e8f9;
+    --th-chart-5: #22d3ee;
+    --th-chart-grid: rgba(14,116,144,0.08);
+    --th-chart-label: #0369a1;
+}
+
+/* ================================================================
+   ТЕМА: SUNSET (Закат)
+   ================================================================ */
+body.theme-sunset {
+    --th-body-bg:          #fff7ed;
+    --th-body-text:        #431407;
+    --th-body-muted:       #9a3412;
+    --th-heading:          #1c0a00;
+
+    --th-navbar-bg:        linear-gradient(135deg, #9a3412 0%, #c2410c 100%);
+    --th-navbar-text:      rgba(255,255,255,0.95);
+
+    --th-card-bg:          #ffffff;
+    --th-card-border:      rgba(234,88,12,0.12);
+    --th-card-shadow:      0 1px 3px rgba(234,88,12,0.08);
+    --th-card-shadow-hover:0 8px 24px rgba(234,88,12,0.15);
+    --th-card-header-bg:   #fff7ed;
+    --th-card-header-border: rgba(234,88,12,0.10);
+
+    --th-input-bg:         #ffffff;
+    --th-input-border:     #fed7aa;
+    --th-input-focus-ring: rgba(234,88,12,0.20);
+
+    --th-table-stripe:     rgba(234,88,12,0.03);
+    --th-table-hover:      rgba(234,88,12,0.06);
+    --th-table-border:     rgba(234,88,12,0.10);
+
+    --th-dropdown-bg:      #ffffff;
+    --th-dropdown-border:  #fed7aa;
+    --th-dropdown-hover:   #fff7ed;
+
+    --th-hr:               rgba(234,88,12,0.10);
+    --th-code-bg:          #fff7ed;
+    --th-scrollbar:        #fdba74;
+    --th-footer-bg:        #fff7ed;
+    --th-badge-bg:         #ffedd5;
+    --th-badge-text:       #9a3412;
+
+    --th-accent:           #ea580c;
+    --th-accent-hover:     #c2410c;
+    --th-accent-light:     rgba(234,88,12,0.10);
+
+    --th-stat-1: linear-gradient(90deg,#f97316,#fb923c);
+    --th-stat-2: linear-gradient(90deg,#ea580c,#f97316);
+    --th-stat-3: linear-gradient(90deg,#fbbf24,#fcd34d);
+    --th-stat-4: linear-gradient(90deg,#ef4444,#f97316);
+
+    --sb-bg:               #fff7ed;
+    --sb-border:           #fed7aa;
+    --sb-text:             #9a3412;
+    --sb-text-muted:       #fdba74;
+    --sb-active-bg:        #ffedd5;
+    --sb-active-text:      #431407;
+    --sb-active-border:    #ea580c;
+    --sb-hover-bg:         #ffedd5;
+    --sb-section-color:    #fdba74;
+
+    --th-chart-1: #f97316;
+    --th-chart-2: #fbbf24;
+    --th-chart-3: #ea580c;
+    --th-chart-4: #ef4444;
+    --th-chart-5: #fb923c;
+    --th-chart-grid: rgba(234,88,12,0.08);
+    --th-chart-label: #9a3412;
+}
+
+/* ================================================================
+   ТЕМА: FOREST (Лес)
+   ================================================================ */
+body.theme-forest {
+    --th-body-bg:          #f0fdf4;
+    --th-body-text:        #052e16;
+    --th-body-muted:       #166534;
+    --th-heading:          #022c1b;
+
+    --th-navbar-bg:        linear-gradient(135deg, #052e16 0%, #14532d 100%);
+    --th-navbar-text:      rgba(255,255,255,0.95);
+
+    --th-card-bg:          #ffffff;
+    --th-card-border:      rgba(22,101,52,0.12);
+    --th-card-shadow:      0 1px 3px rgba(22,101,52,0.08);
+    --th-card-shadow-hover:0 8px 24px rgba(22,101,52,0.15);
+    --th-card-header-bg:   #f0fdf4;
+    --th-card-header-border: rgba(22,101,52,0.10);
+
+    --th-input-bg:         #ffffff;
+    --th-input-border:     #bbf7d0;
+    --th-input-focus-ring: rgba(22,163,74,0.20);
+
+    --th-table-stripe:     rgba(22,163,74,0.03);
+    --th-table-hover:      rgba(22,163,74,0.06);
+    --th-table-border:     rgba(22,163,74,0.10);
+
+    --th-dropdown-bg:      #ffffff;
+    --th-dropdown-border:  #bbf7d0;
+    --th-dropdown-hover:   #f0fdf4;
+
+    --th-hr:               rgba(22,163,74,0.10);
+    --th-code-bg:          #f0fdf4;
+    --th-scrollbar:        #86efac;
+    --th-footer-bg:        #f0fdf4;
+    --th-badge-bg:         #dcfce7;
+    --th-badge-text:       #166534;
+
+    --th-accent:           #16a34a;
+    --th-accent-hover:     #15803d;
+    --th-accent-light:     rgba(22,163,74,0.10);
+
+    --th-stat-1: linear-gradient(90deg,#16a34a,#15803d);
+    --th-stat-2: linear-gradient(90deg,#22c55e,#4ade80);
+    --th-stat-3: linear-gradient(90deg,#4ade80,#86efac);
+    --th-stat-4: linear-gradient(90deg,#059669,#10b981);
+
+    --sb-bg:               #f0fdf4;
+    --sb-border:           #bbf7d0;
+    --sb-text:             #166534;
+    --sb-text-muted:       #86efac;
+    --sb-active-bg:        #dcfce7;
+    --sb-active-text:      #052e16;
+    --sb-active-border:    #16a34a;
+    --sb-hover-bg:         #dcfce7;
+    --sb-section-color:    #86efac;
+
+    --th-chart-1: #16a34a;
+    --th-chart-2: #22c55e;
+    --th-chart-3: #059669;
+    --th-chart-4: #4ade80;
+    --th-chart-5: #15803d;
+    --th-chart-grid: rgba(22,163,74,0.08);
+    --th-chart-label: #166534;
+}
+
+/* ================================================================
+   ТЕМА: CORPORATE (Корпоративная)
+   ================================================================ */
+body.theme-corporate {
+    --th-body-bg:          #f4f6f9;
+    --th-body-text:        #1a2332;
+    --th-body-muted:       #5a6a7a;
+    --th-heading:          #0d1520;
+
+    --th-navbar-bg:        linear-gradient(135deg, #1a2332 0%, #243447 100%);
+    --th-navbar-text:      rgba(255,255,255,0.95);
+
+    --th-card-bg:          #ffffff;
+    --th-card-border:      rgba(26,35,50,0.10);
+    --th-card-shadow:      0 1px 4px rgba(26,35,50,0.08);
+    --th-card-shadow-hover:0 8px 24px rgba(26,35,50,0.12);
+    --th-card-header-bg:   #f4f6f9;
+    --th-card-header-border: rgba(26,35,50,0.08);
+
+    --th-input-bg:         #ffffff;
+    --th-input-border:     #d0d8e4;
+    --th-input-focus-ring: rgba(37,99,235,0.20);
+
+    --th-table-stripe:     rgba(26,35,50,0.02);
+    --th-table-hover:      rgba(37,99,235,0.04);
+    --th-table-border:     rgba(26,35,50,0.08);
+
+    --th-dropdown-bg:      #ffffff;
+    --th-dropdown-border:  rgba(26,35,50,0.12);
+    --th-dropdown-hover:   #f4f6f9;
+
+    --th-hr:               rgba(26,35,50,0.08);
+    --th-code-bg:          #f4f6f9;
+    --th-scrollbar:        #c0c8d4;
+    --th-footer-bg:        #f4f6f9;
+    --th-badge-bg:         #e8ecf2;
+    --th-badge-text:       #5a6a7a;
+
+    --th-accent:           #2563eb;
+    --th-accent-hover:     #1d4ed8;
+    --th-accent-light:     rgba(37,99,235,0.08);
+
+    --th-stat-1: linear-gradient(90deg,#2563eb,#3b82f6);
+    --th-stat-2: linear-gradient(90deg,#0284c7,#38bdf8);
+    --th-stat-3: linear-gradient(90deg,#16a34a,#22c55e);
+    --th-stat-4: linear-gradient(90deg,#7c3aed,#a78bfa);
+
+    --sb-bg:               #ffffff;
+    --sb-border:           #e4e8ee;
+    --sb-text:             #3d4f63;
+    --sb-text-muted:       #8596a8;
+    --sb-active-bg:        #eff6ff;
+    --sb-active-text:      #1d4ed8;
+    --sb-active-border:    #2563eb;
+    --sb-hover-bg:         #f4f6f9;
+    --sb-section-color:    #c0c8d4;
+
+    --th-chart-1: #2563eb;
+    --th-chart-2: #16a34a;
+    --th-chart-3: #d97706;
+    --th-chart-4: #dc2626;
+    --th-chart-5: #7c3aed;
+    --th-chart-grid: rgba(26,35,50,0.06);
+    --th-chart-label: #5a6a7a;
+}
+
+/* ================================================================
+   ТЕМА: PURPLE (Ночной неон)
+   ================================================================ */
+body.theme-purple {
+    --th-body-bg:          #0d0d1a;
+    --th-body-text:        #e2d9f3;
+    --th-body-muted:       #9b8ec4;
+    --th-heading:          #f3eeff;
+
+    --th-navbar-bg:        linear-gradient(135deg, #13002e 0%, #1a0038 100%);
+    --th-navbar-text:      rgba(255,255,255,0.95);
+
+    --th-card-bg:          #1a1030;
+    --th-card-border:      rgba(139,92,246,0.18);
+    --th-card-shadow:      0 1px 3px rgba(0,0,0,0.4);
+    --th-card-shadow-hover:0 8px 32px rgba(139,92,246,0.25);
+    --th-card-header-bg:   #130d24;
+    --th-card-header-border: rgba(139,92,246,0.14);
+
+    --th-input-bg:         #130d24;
+    --th-input-border:     rgba(139,92,246,0.30);
+    --th-input-text:       #e2d9f3;
+    --th-input-placeholder:#6b5b9e;
+    --th-input-focus-ring: rgba(168,85,247,0.30);
+
+    --th-table-stripe:     rgba(139,92,246,0.05);
+    --th-table-hover:      rgba(139,92,246,0.12);
+    --th-table-border:     rgba(139,92,246,0.12);
+
+    --th-dropdown-bg:      #1a1030;
+    --th-dropdown-border:  rgba(139,92,246,0.25);
+    --th-dropdown-hover:   rgba(139,92,246,0.12);
+    --th-modal-bg:         #1a1030;
+
+    --th-hr:               rgba(139,92,246,0.15);
+    --th-code-bg:          #130d24;
+    --th-scrollbar:        #4c1d95;
+    --th-scrollbar-hover:  #7c3aed;
+    --th-footer-bg:        #1a1030;
+    --th-footer-border:    rgba(139,92,246,0.12);
+    --th-badge-bg:         rgba(139,92,246,0.15);
+    --th-badge-text:       #a78bfa;
+
+    --th-accent:           #a855f7;
+    --th-accent-hover:     #9333ea;
+    --th-accent-light:     rgba(168,85,247,0.15);
+
+    --th-stat-1: linear-gradient(90deg,#7c3aed,#a855f7);
+    --th-stat-2: linear-gradient(90deg,#6366f1,#818cf8);
+    --th-stat-3: linear-gradient(90deg,#ec4899,#f472b6);
+    --th-stat-4: linear-gradient(90deg,#8b5cf6,#c084fc);
+
+    --sb-bg:               #1a1030;
+    --sb-border:           rgba(139,92,246,0.15);
+    --sb-text:             #9b8ec4;
+    --sb-text-muted:       #5b4e87;
+    --sb-active-bg:        rgba(139,92,246,0.18);
+    --sb-active-text:      #c4b5fd;
+    --sb-active-border:    #a855f7;
+    --sb-hover-bg:         rgba(139,92,246,0.10);
+    --sb-section-color:    #4c1d95;
+
+    --th-chart-1: #a855f7;
+    --th-chart-2: #ec4899;
+    --th-chart-3: #6366f1;
+    --th-chart-4: #f472b6;
+    --th-chart-5: #c084fc;
+    --th-chart-grid: rgba(139,92,246,0.12);
+    --th-chart-label: #9b8ec4;
+}
+
+body.theme-purple .btn-close { filter: invert(1); }
+body.theme-purple .progress {
+    background-color: rgba(139,92,246,0.15) !important;
+}
+body.theme-purple .select2-container--bootstrap-5 .select2-selection,
+body.theme-dark .select2-container--bootstrap-5 .select2-selection {
+    background-color: var(--th-input-bg) !important;
+    border-color: var(--th-input-border) !important;
+    color: var(--th-input-text) !important;
+}
+
+/* ================================================================
+   ТЕМА: CURRENT (alias light — обратная совместимость)
+   ================================================================ */
+body.theme-current,
+body.theme-classic { /* same as default */ }
+
+/* ================================================================
+   DASHBOARD WIDGET SYSTEM
+   ================================================================ */
+
+/* Drag-and-drop */
+.dash-widget {
+    position: relative;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.dash-widget.dragging {
+    opacity: 0.4;
+    transform: scale(0.98);
+}
+.dash-widget.drag-over {
+    outline: 2px dashed var(--th-accent);
+    outline-offset: 4px;
+    border-radius: 8px;
+}
+
+/* Drag handle — видна только в режиме кастомизации (full-width bar) */
+.dash-widget-handle {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    min-height: 36px;
+    background: linear-gradient(90deg, var(--th-accent) 0%, var(--th-accent-hover) 100%);
+    color: #fff;
+    border-radius: 10px 10px 0 0;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 14px;
+    cursor: grab;
+    font-size: 0.78rem;
+    font-weight: 600;
+    user-select: none;
+    letter-spacing: 0.01em;
+    transition: background 0.15s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    margin-bottom: 0;
+}
+.dash-widget-handle:active { cursor: grabbing; }
+.dash-widget-handle:hover  { filter: brightness(1.08); }
+.dash-widget-handle i.fa-grip-horizontal { opacity: 0.7; font-size: 0.85rem; }
+.dash-widget-handle span {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Кнопка collapse внутри handle */
+.dash-widget-handle .widget-collapse-btn {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.75);
+    cursor: pointer;
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    transition: color 0.15s, background 0.15s;
+    flex-shrink: 0;
+}
+.dash-widget-handle .widget-collapse-btn:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.18);
+}
+.dash-widget-handle .widget-collapse-btn i {
+    transition: transform 0.2s ease;
+}
+.dash-widget.widget-collapsed .dash-widget-handle .widget-collapse-btn i {
+    transform: rotate(180deg);
+}
+
+/* Collapsed widget — показываем только handle */
+.dash-widget.widget-collapsed .dash-widget-handle {
+    border-radius: 10px;
+    margin-bottom: 8px;
+}
+.dash-widget.widget-collapsed .dash-widget-handle ~ * {
+    display: none !important;
+}
+
+body.dashboard-customize-mode .dash-widget-handle {
+    display: flex;
+}
+body.dashboard-customize-mode .dash-widget:hover:not(:has(.dash-widget-handle:active)) {
+    outline: 2px dashed var(--th-accent);
+    outline-offset: 4px;
+    border-radius: 10px;
+}
+
+/* Hidden widget */
+.dash-widget[data-visible="false"] { display: none !important; }
+
+/* Customize mode indicator */
+body.dashboard-customize-mode .dash-customize-hint {
+    display: block !important;
+}
+
+/* ── Панель настройки дашборда ─────────────────────────────── */
+.dash-config-panel {
+    position: fixed;
+    top: 0;
+    right: -380px;
+    width: 360px;
+    height: 100vh;
+    background: var(--th-card-bg);
+    border-left: 1px solid var(--th-card-border);
+    box-shadow: -8px 0 32px rgba(0,0,0,0.12);
+    z-index: 1050;
+    transition: right 0.3s cubic-bezier(0.4,0,0.2,1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.dash-config-panel.open { right: 0; }
+
+.dash-config-panel-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--th-hr);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--th-card-header-bg);
+    flex-shrink: 0;
+}
+.dash-config-panel-header h6 {
+    margin: 0;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--th-heading);
+}
+.dash-config-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 1.5rem;
+}
+.dash-config-panel-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--th-hr);
+    background: var(--th-card-header-bg);
+    flex-shrink: 0;
+}
+
+/* Widget toggle item */
+.widget-toggle-item {
+    display: flex;
+    align-items: center;
+    padding: 0.6rem 0.5rem;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    transition: background 0.15s;
+    cursor: pointer;
+    gap: 0.75rem;
+}
+.widget-toggle-item:hover { background: var(--th-dropdown-hover); }
+.widget-toggle-item .wi-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--th-accent-light);
+    color: var(--th-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+.widget-toggle-item .wi-label {
+    flex: 1;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--th-body-text);
+}
+.widget-toggle-item .wi-drag {
+    color: var(--th-body-muted);
+    cursor: grab;
+    font-size: 0.8rem;
+}
+
+/* Theme picker grid */
+.theme-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 0.5rem;
+}
+.theme-swatch {
+    border-radius: 10px;
+    padding: 10px 6px;
+    text-align: center;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.15s, transform 0.15s;
+    position: relative;
+}
+.theme-swatch:hover { transform: translateY(-2px); }
+.theme-swatch.active { border-color: var(--th-accent); }
+.theme-swatch .swatch-preview {
+    height: 32px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    position: relative;
+    overflow: hidden;
+}
+.theme-swatch .swatch-name {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--th-body-text);
+}
+.theme-swatch.active::after {
+    content: '✓';
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    font-size: 0.7rem;
+    color: var(--th-accent);
+    font-weight: 700;
+}
+
+/* ── Кнопка открытия панели ─────────────────────────────────── */
+.dash-config-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--th-accent);
+    color: #fff;
+    border: none;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.20);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    z-index: 1040;
+}
+.dash-config-btn:hover {
+    background: var(--th-accent-hover);
+    transform: scale(1.08);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+.dash-config-btn.spinning i { animation: spin 0.4s ease; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(180deg); } }
+
+/* Backdrop */
+.dash-config-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 1045;
+    backdrop-filter: blur(2px);
+}
+.dash-config-backdrop.show { display: block; }
+
+/* ── Stat cards: rich gradient style ───────────────────────── */
+.stat-card-v2 {
+    border-radius: 14px;
+    overflow: hidden;
+    border: none !important;
+    position: relative;
+    color: #fff;
+    min-height: 120px;
+}
+.stat-card-v2 .card-body { position: relative; z-index: 2; padding: 1.2rem 1.4rem; }
+.stat-card-v2::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: inherit;
+    z-index: 1;
+}
+.stat-card-v2 .scv2-bg-icon {
+    position: absolute;
+    right: -10px;
+    bottom: -12px;
+    font-size: 5rem;
+    opacity: 0.12;
+    z-index: 1;
+    line-height: 1;
+}
+.stat-card-v2 .scv2-label { font-size: 0.78rem; font-weight: 600; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.04em; }
+.stat-card-v2 .scv2-value { font-size: 2.2rem; font-weight: 800; line-height: 1; letter-spacing: -1.5px; margin: 4px 0; }
+.stat-card-v2 .scv2-footer { font-size: 0.78rem; opacity: 0.80; }
+.stat-card-v2 .scv2-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.20);
+    backdrop-filter: blur(4px);
+}
+.stat-card-v2:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.18) !important; transition: all 0.2s ease; }
+
+.scv2-indigo  { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); }
+.scv2-blue    { background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%); }
+.scv2-green   { background: linear-gradient(135deg, #22c55e 0%, #10b981 100%); }
+.scv2-purple  { background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); }
+.scv2-orange  { background: linear-gradient(135deg, #f97316 0%, #fbbf24 100%); }
+.scv2-teal    { background: linear-gradient(135deg, #14b8a6 0%, #22c55e 100%); }
+
+/* Sparkline canvas in stat card */
+.scv2-sparkline {
+    height: 36px;
+    width: 100%;
+    margin-top: 6px;
+    opacity: 0.8;
+}
+
+/* ── Quick action cards ─────────────────────────────────────── */
+.quick-action-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 0.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--th-card-border);
+    background: var(--th-card-bg);
+    text-decoration: none;
+    color: var(--th-body-text);
+    transition: all 0.2s ease;
+    text-align: center;
+    box-shadow: var(--th-card-shadow);
+}
+.quick-action-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--th-card-shadow-hover);
+    border-color: var(--th-accent);
+    color: var(--th-accent);
+    text-decoration: none;
+}
+.quick-action-card .qa-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    transition: transform 0.2s;
+}
+.quick-action-card:hover .qa-icon { transform: scale(1.1); }
+.quick-action-card .qa-label { font-size: 0.8rem; font-weight: 600; }
+.quick-action-card .qa-desc  { font-size: 0.7rem; color: var(--th-body-muted); margin-top: 2px; }
+
+/* ── Customize mode: FAB badge + panel header ───────────────── */
+body.dashboard-customize-mode .dash-config-btn {
+    background: #10b981;
+}
+body.dashboard-customize-mode .dash-config-btn::after {
+    content: '';
+    position: absolute;
+    top: -3px; right: -3px;
+    width: 13px; height: 13px;
+    background: #fbbf24;
+    border-radius: 50%;
+    border: 2px solid var(--th-body-bg);
+    animation: pulse-dot 1.5s ease infinite;
+}
+@keyframes pulse-dot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%       { transform: scale(1.3); opacity: 0.7; }
+}
+
+/* Customize mode toggle button in panel */
+.dash-customize-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1.5px solid var(--th-card-border);
+    background: var(--th-card-bg);
+    color: var(--th-body-text);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+}
+.dash-customize-toggle:hover { border-color: var(--th-accent); color: var(--th-accent); }
+.dash-customize-toggle.active {
+    background: var(--th-accent-light);
+    border-color: var(--th-accent);
+    color: var(--th-accent);
+}
+.dash-customize-toggle .dct-status {
+    margin-left: auto;
+    font-size: 0.72rem;
+    opacity: 0.7;
+}
+
+/* Widget drag-over highlight in panel list */
+.widget-toggle-item.drag-over-panel {
+    background: var(--th-accent-light);
+    outline: 1px dashed var(--th-accent);
+    outline-offset: 2px;
+}
+
+/* Section header in config panel body */
+.dcp-section-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--th-body-muted);
+    margin-bottom: 6px;
+    margin-top: 4px;
+    padding: 0 2px;
+}
+
+/* Chart placeholder shimmer while loading */
+.chart-placeholder {
+    background: linear-gradient(90deg,
+        var(--th-card-header-bg) 25%,
+        var(--th-dropdown-hover) 50%,
+        var(--th-card-header-bg) 75%
+    );
+    background-size: 400% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 6px;
+    min-height: 160px;
+}
+@keyframes shimmer {
+    0%   { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+}
+
+/* Activity feed improvements */
+.activity-feed {
+    max-height: 320px;
+    overflow-y: auto;
+}
+.activity-item {
+    display: flex;
+    gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--th-hr);
+    transition: background 0.15s;
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-item:hover { background: var(--th-table-hover); }
+.activity-dot {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem;
+    flex-shrink: 0;
+    color: #fff;
+    margin-top: 1px;
+}
+.activity-icon-wrap { flex-shrink: 0; }
+.activity-body { flex: 1; min-width: 0; }
+.activity-title { line-height: 1.3; }
+
+/* Stat card v2 — chart area below value */
+.scv2-chart-area {
+    position: relative;
+    margin: 6px -1.4rem -1.2rem;
+    height: 48px;
+    overflow: hidden;
+    border-radius: 0 0 14px 14px;
+    opacity: 0.6;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .dash-config-panel { width: 100%; right: -100%; }
+    .dash-config-panel.open { right: 0; }
+    .dash-config-btn { bottom: 16px; right: 16px; }
+    .dash-widget-handle { font-size: 0.72rem; padding: 4px 10px; }
+    .stat-card-v2 .scv2-value { font-size: 1.7rem; }
+}
+
+/* ── Dark theme Chart.js canvas (subtle bg) ─────────────────── */
+body.theme-dark canvas,
+body.theme-purple canvas {
+    filter: brightness(1.05);
+}

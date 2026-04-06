@@ -1,0 +1,656 @@
+{% extends "base.html" %}
+
+{% block title %}{% if instance %}{{ get_translation('instances', 'edit_title') }}{% else %}{{ get_translation('instances', 'new_title') }}{% endif %}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="px-3 pt-2">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home"></i> Главная</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('instances.instances_list') }}">Экземпляры</a></li>
+        <li class="breadcrumb-item active">{% if instance %}Редактировать{% else %}Создать{% endif %}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-{% if instance %}edit{% else %}plus{% endif %}"></i>
+            {% if instance %}{{ get_translation('instances', 'edit_title') }}{% else %}{{ get_translation('instances', 'new_title') }}{% endif %}
+        </h1>
+        <a href="{{ url_for('instances.instances_list') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> {{ get_translation('common', 'back') }}
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" id="instanceForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <!-- Скрытое поле для ID при редактировании -->
+                {% if instance %}
+                <input type="hidden" id="instance_id" value="{{ instance.id }}">
+                {% endif %}
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="nomenclature_id" class="form-label">{{ get_translation('instances', 'nomenclature') }} <span class="text-danger">*</span></label>
+                        <select class="form-select" id="nomenclature_id" name="nomenclature_id" required {% if instance %}disabled{% endif %}>
+                            <option value="">{{ get_translation('instances', 'select_nomenclature') }}</option>
+                            {% for item in nomenclatures %}
+                            <option value="{{ item.id }}" 
+                                    data-accounting-type="{{ item.accounting_type }}"
+                                    data-has-variations="{{ item.has_variations|default(0) }}"
+                                    {% if instance and instance.nomenclature_id == item.id %}selected{% endif %}>
+                                {{ item.name }} ({{ item.sku }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% if instance %}
+                        <input type="hidden" name="nomenclature_id" value="{{ instance.nomenclature_id }}">
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="inventory_number" class="form-label">{{ get_translation('instances', 'inventory_number') }}</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="inventory_number" name="inventory_number" 
+                                   value="{{ instance.inventory_number if instance else '' }}"
+                                   placeholder="{{ get_translation('instances', 'inventory_number_placeholder') }}"
+                                   {% if instance %}readonly{% endif %}>
+                            <button type="button" class="btn btn-outline-secondary" id="checkInventoryBtn" onclick="checkInventoryNumber()">
+                                <i class="fas fa-search"></i> Проверить
+                            </button>
+                        </div>
+                        <div class="form-text" id="inventory_status"></div>
+                        <div class="form-text">{{ get_translation('instances', 'inventory_number_help') }}</div>
+                    </div>
+                </div>
+
+                <!-- Блок выбора модификации (размер/цвет) -->
+                <div class="row" id="variation-section" style="{% if not instance or not instance.variation_id %}display: none;{% endif %}">
+                    <div class="col-md-6 mb-3">
+                        <label for="variation_id" class="form-label">Модификация (размер/цвет) <span class="text-danger">*</span></label>
+                        <select class="form-select" id="variation_id" name="variation_id" {% if instance and instance.variation_id %}disabled{% endif %}>
+                            <option value="">-- Выберите размер/цвет --</option>
+                            {% if variations %}
+                                {% for v in variations %}
+                                <option value="{{ v.id }}" 
+                                        data-size="{{ v.size }}"
+                                        data-color="{{ v.color }}"
+                                        data-barcode="{{ v.barcode }}"
+                                        {% if instance and instance.variation_id == v.id %}selected{% endif %}>
+                                    {% if v.size %}Размер {{ v.size }}{% endif %}
+                                    {% if v.color %}{% if v.size %} / {% endif %}{{ v.color }}{% endif %}
+                                    (SKU: {{ v.sku }})
+                                </option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                        {% if instance and instance.variation_id %}
+                        <input type="hidden" name="variation_id" value="{{ instance.variation_id }}">
+                        {% endif %}
+                        <div class="form-text" id="variation_details"></div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Информация о модификации</label>
+                        <div class="card bg-light">
+                            <div class="card-body" id="variation_info">
+                                {% if instance and instance.variation_id %}
+                                <p class="mb-1"><strong>Размер:</strong> {{ instance.siz_size or '—' }}</p>
+                                <p class="mb-1"><strong>Цвет:</strong> {{ instance.siz_color or '—' }}</p>
+                                <p class="mb-0"><strong>Штрих-код:</strong> {{ instance.barcode or '—' }}</p>
+                                {% else %}
+                                <p class="mb-0 text-muted">Выберите модификацию для просмотра информации</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="old_inventory_number" class="form-label">Старый инвентарный номер</label>
+                        <input type="text" class="form-control" id="old_inventory_number" name="old_inventory_number" 
+                               value="{{ instance.old_inventory_number if instance else '' }}"
+                               placeholder="Введите старый инвентарный номер (если есть)">
+                        <div class="form-text">Предыдущий инвентарный номер для истории</div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="serial_number" class="form-label">{{ get_translation('instances', 'serial_number') }}</label>
+                        <input type="text" class="form-control" id="serial_number" name="serial_number" 
+                               value="{{ instance.serial_number if instance else '' }}"
+                               placeholder="{{ get_translation('instances', 'serial_number_placeholder') }}">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="status" class="form-label">Статус</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="in_stock" {% if instance and instance.status == 'in_stock' %}selected{% endif %}>На складе</option>
+                            <option value="in_use" {% if instance and instance.status == 'in_use' %}selected{% endif %}>В использовании</option>
+                            <option value="repair" {% if instance and instance.status == 'repair' %}selected{% endif %}>В ремонте</option>
+                            <option value="written_off" {% if instance and instance.status == 'written_off' %}selected{% endif %}>Списано</option>
+                            <option value="reserved" {% if instance and instance.status == 'reserved' %}selected{% endif %}>Зарезервировано</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="condition" class="form-label">Состояние</label>
+                        <select class="form-select" id="condition" name="condition">
+                            <option value="new" {% if instance and instance.condition == 'new' %}selected{% endif %}>Новое</option>
+                            <option value="good" {% if instance and instance.condition == 'good' %}selected{% endif %}>Хорошее</option>
+                            <option value="used" {% if instance and instance.condition == 'used' %}selected{% endif %}>Б/у</option>
+                            <option value="repair_needed" {% if instance and instance.condition == 'repair_needed' %}selected{% endif %}>Требует ремонта</option>
+                            <option value="write_off" {% if instance and instance.condition == 'write_off' %}selected{% endif %}>К списанию</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="barcode" class="form-label">Штрих-код</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="barcode" name="barcode" 
+                                   value="{{ instance.barcode if instance else '' }}"
+                                   placeholder="Штрих-код">
+                            <button type="button" class="btn btn-outline-secondary" onclick="generateBarcode()">
+                                <i class="fas fa-qrcode"></i> Сгенерировать
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="location_id" class="form-label">Местоположение</label>
+                        <select class="form-select" id="location_id" name="location_id">
+                            <option value="">-- Не указано --</option>
+                            {% for loc in locations %}
+                            <option value="{{ loc.id }}" {% if instance and instance.location_id == loc.id %}selected{% endif %}>
+                                {{ loc.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="warehouse_id" class="form-label">Склад</label>
+                        <select class="form-select" id="warehouse_id" name="warehouse_id">
+                            <option value="">-- Не указано --</option>
+                            {% for wh in warehouses %}
+                            <option value="{{ wh.id }}" {% if instance and instance.warehouse_id == wh.id %}selected{% endif %}>
+                                {{ wh.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="employee_id" class="form-label">Сотрудник</label>
+                        <select class="form-select" id="employee_id" name="employee_id">
+                            <option value="">-- Не указано --</option>
+                            {% for emp in employees %}
+                            <option value="{{ emp.id }}" {% if instance and instance.employee_id == emp.id %}selected{% endif %}>
+                                {{ emp.full_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="supplier_id" class="form-label">Поставщик</label>
+                        <select class="form-select" id="supplier_id" name="supplier_id">
+                            <option value="">-- Не указано --</option>
+                            {% for sup in suppliers %}
+                            <option value="{{ sup.id }}" {% if instance and instance.supplier_id == sup.id %}selected{% endif %}>
+                                {{ sup.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="purchase_date" class="form-label">Дата покупки</label>
+                        <input type="date" class="form-control" id="purchase_date" name="purchase_date" 
+                               value="{{ instance.purchase_date if instance else '' }}">
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="purchase_price" class="form-label">Цена покупки</label>
+                        <input type="number" step="0.01" class="form-control" id="purchase_price" name="purchase_price" 
+                               value="{{ instance.purchase_price if instance else '' }}">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="warranty_until" class="form-label">Гарантия до</label>
+                        <input type="date" class="form-control" id="warranty_until" name="warranty_until" 
+                               value="{{ instance.warranty_until if instance else '' }}">
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="issued_date" class="form-label">Дата выдачи</label>
+                        <input type="date" class="form-control" id="issued_date" name="issued_date" 
+                               value="{{ instance.issued_date if instance else '' }}">
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="expected_return_date" class="form-label">Ожидаемая дата возврата</label>
+                        <input type="date" class="form-control" id="expected_return_date" name="expected_return_date" 
+                               value="{{ instance.expected_return_date if instance else '' }}">
+                    </div>
+                </div>
+
+                <hr>
+                <h5 class="mb-3">Техническое обслуживание</h5>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="last_calibration" class="form-label">Последняя поверка</label>
+                        <input type="date" class="form-control" id="last_calibration" name="last_calibration" 
+                               value="{{ instance.last_calibration if instance else '' }}">
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="calibration_interval" class="form-label">Интервал поверки (дней)</label>
+                        <input type="number" class="form-control" id="calibration_interval" name="calibration_interval" 
+                               value="{{ instance.calibration_interval if instance else '' }}">
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="next_calibration" class="form-label">Следующая поверка</label>
+                        <input type="date" class="form-control" id="next_calibration" name="next_calibration" 
+                               value="{{ instance.next_calibration if instance else '' }}" readonly>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="last_maintenance" class="form-label">Последнее ТО</label>
+                        <input type="date" class="form-control" id="last_maintenance" name="last_maintenance" 
+                               value="{{ instance.last_maintenance if instance else '' }}">
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="maintenance_interval" class="form-label">Интервал ТО (дней)</label>
+                        <input type="number" class="form-control" id="maintenance_interval" name="maintenance_interval" 
+                               value="{{ instance.maintenance_interval if instance else '' }}">
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="next_maintenance" class="form-label">Следующее ТО</label>
+                        <input type="date" class="form-control" id="next_maintenance" name="next_maintenance" 
+                               value="{{ instance.next_maintenance if instance else '' }}" readonly>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="operating_hours" class="form-label">Наработка (часов)</label>
+                        <input type="number" class="form-control" id="operating_hours" name="operating_hours" 
+                               value="{{ instance.operating_hours if instance else 0 }}">
+                    </div>
+                </div>
+
+                <!-- Поля для СИЗ (будут автоматически заполняться из модификации) -->
+                <hr>
+                <h5 class="mb-3">Характеристики СИЗ</h5>
+                
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="siz_size" class="form-label">Размер</label>
+                        <input type="text" class="form-control" id="siz_size" name="siz_size" 
+                               value="{{ instance.siz_size if instance else '' }}" readonly>
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label for="siz_height" class="form-label">Рост</label>
+                        <input type="text" class="form-control" id="siz_height" name="siz_height" 
+                               value="{{ instance.siz_height if instance else '' }}">
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label for="siz_fullness" class="form-label">Полнота</label>
+                        <input type="text" class="form-control" id="siz_fullness" name="siz_fullness" 
+                               value="{{ instance.siz_fullness if instance else '' }}">
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label for="siz_color" class="form-label">Цвет</label>
+                        <input type="text" class="form-control" id="siz_color" name="siz_color" 
+                               value="{{ instance.siz_color if instance else '' }}" readonly>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="siz_material" class="form-label">Материал</label>
+                        <input type="text" class="form-control" id="siz_material" name="siz_material" 
+                               value="{{ instance.siz_material if instance else '' }}">
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label for="siz_insulation" class="form-label">Утеплитель</label>
+                        <input type="text" class="form-control" id="siz_insulation" name="siz_insulation" 
+                               value="{{ instance.siz_insulation if instance else '' }}">
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label for="siz_temp" class="form-label">Температурный режим</label>
+                        <input type="text" class="form-control" id="siz_temp" name="siz_temp" 
+                               value="{{ instance.siz_temp if instance else '' }}">
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label for="siz_gost" class="form-label">ГОСТ</label>
+                        <input type="text" class="form-control" id="siz_gost" name="siz_gost" 
+                               value="{{ instance.siz_gost if instance else '' }}">
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="siz_wear_period" class="form-label">Срок носки (мес)</label>
+                        <input type="number" class="form-control" id="siz_wear_period" name="siz_wear_period" 
+                               value="{{ instance.siz_wear_period if instance else '' }}">
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label for="siz_previous_issue" class="form-label">Предыдущая выдача</label>
+                        <input type="date" class="form-control" id="siz_previous_issue" name="siz_previous_issue" 
+                               value="{{ instance.siz_previous_issue if instance else '' }}">
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label for="siz_next_replacement" class="form-label">Следующая замена</label>
+                        <input type="date" class="form-control" id="siz_next_replacement" name="siz_next_replacement" 
+                               value="{{ instance.siz_next_replacement if instance else '' }}">
+                    </div>
+                </div>
+
+                <hr>
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    <i class="fas fa-save"></i> {{ get_translation('common', 'save') }}
+                </button>
+                
+                <!-- Модальное окно для подтверждения обновления -->
+                <div class="modal fade" id="confirmUpdateModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header bg-warning">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-exclamation-triangle"></i> Экземпляр уже существует
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Экземпляр с инвентарным номером <strong id="existingInvNumber"></strong> уже существует в системе.</p>
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <table class="table table-sm">
+                                            <tr>
+                                                <th>Номенклатура:</th>
+                                                <td id="existingNomenclature"></td>
+                                            </tr>
+                                            <tr>
+                                                <th>Серийный номер:</th>
+                                                <td id="existingSerial"></td>
+                                            </tr>
+                                            <tr>
+                                                <th>Статус:</th>
+                                                <td id="existingStatus"></td>
+                                            </tr>
+                                            <tr>
+                                                <th>Местоположение:</th>
+                                                <td id="existingLocation"></td>
+                                            </tr>
+                                            <tr>
+                                                <th>Сотрудник:</th>
+                                                <td id="existingEmployee"></td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                                <p class="text-warning">
+                                    <i class="fas fa-question-circle"></i>
+                                    Хотите обновить этот экземпляр текущими данными?
+                                </p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="fas fa-times"></i> Отмена
+                                </button>
+                                <button type="button" class="btn btn-warning" id="confirmUpdateBtn">
+                                    <i class="fas fa-sync-alt"></i> Обновить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let existingInstanceData = null;
+
+function checkInventoryNumber() {
+    const inventoryNumber = document.getElementById('inventory_number').value;
+    const instanceId = document.getElementById('instance_id')?.value;
+    const statusDiv = document.getElementById('inventory_status');
+    
+    if (!inventoryNumber) {
+        statusDiv.innerHTML = '<span class="text-warning">Введите инвентарный номер</span>';
+        return;
+    }
+    
+    statusDiv.innerHTML = '<span class="text-info"><i class="fas fa-spinner fa-spin"></i> Проверка...</span>';
+    
+    fetch(`/api/instances/check?inventory_number=${encodeURIComponent(inventoryNumber)}&exclude_id=${instanceId || ''}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.exists) {
+                existingInstanceData = data.instance;
+                statusDiv.innerHTML = '<span class="text-danger"><i class="fas fa-exclamation-circle"></i> Номер уже занят</span>';
+                
+                // Показываем модальное окно с вопросом об обновлении
+                showUpdateConfirmation(data.instance);
+            } else {
+                existingInstanceData = null;
+                statusDiv.innerHTML = '<span class="text-success"><i class="fas fa-check-circle"></i> Номер свободен</span>';
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка проверки:', error);
+            statusDiv.innerHTML = '<span class="text-danger">Ошибка проверки</span>';
+        });
+}
+
+function showUpdateConfirmation(instance) {
+    document.getElementById('existingInvNumber').textContent = instance.inventory_number;
+    document.getElementById('existingNomenclature').textContent = instance.nomenclature_name || '—';
+    document.getElementById('existingSerial').textContent = instance.serial_number || '—';
+    document.getElementById('existingStatus').textContent = instance.status || '—';
+    document.getElementById('existingLocation').textContent = instance.location_name || '—';
+    document.getElementById('existingEmployee').textContent = instance.employee_name || '—';
+    
+    const modal = new bootstrap.Modal(document.getElementById('confirmUpdateModal'));
+    modal.show();
+}
+
+document.getElementById('confirmUpdateBtn').addEventListener('click', function() {
+    if (existingInstanceData) {
+        // Перенаправляем на страницу редактирования
+        window.location.href = `/instances/${existingInstanceData.id}/edit`;
+    }
+});
+
+// Загрузка модификаций при выборе номенклатуры
+document.getElementById('nomenclature_id').addEventListener('change', function() {
+    const nomenId = this.value;
+    const variationSection = document.getElementById('variation-section');
+    const variationSelect = document.getElementById('variation_id');
+    const variationInfo = document.getElementById('variation_info');
+    
+    if (!nomenId) {
+        variationSection.style.display = 'none';
+        return;
+    }
+    
+    // Загружаем модификации через API
+    fetch('/api/nomenclatures/' + nomenId + '/variations')
+        .then(response => response.json())
+        .then(variations => {
+            variationSelect.innerHTML = '<option value="">-- Выберите размер/цвет --</option>';
+            
+            if (variations.length > 0) {
+                variations.forEach(v => {
+                    const option = document.createElement('option');
+                    option.value = v.id;
+                    option.dataset.size = v.size || '';
+                    option.dataset.color = v.color || '';
+                    option.dataset.barcode = v.barcode || '';
+                    
+                    let text = '';
+                    if (v.size) text += 'Размер ' + v.size;
+                    if (v.color) {
+                        if (text) text += ' / ';
+                        text += v.color;
+                    }
+                    if (!text) text = 'Без названия';
+                    text += ' (SKU: ' + v.sku + ')';
+                    
+                    option.textContent = text;
+                    variationSelect.appendChild(option);
+                });
+                variationSection.style.display = 'flex';
+            } else {
+                variationSection.style.display = 'none';
+            }
+        });
+});
+
+// При выборе модификации - автозаполняем поля
+document.getElementById('variation_id').addEventListener('change', function() {
+    const selected = this.options[this.selectedIndex];
+    const variationInfo = document.getElementById('variation_info');
+    const sizSize = document.getElementById('siz_size');
+    const sizColor = document.getElementById('siz_color');
+    const barcode = document.getElementById('barcode');
+    
+    if (selected.value) {
+        // Автозаполняем поля
+        sizSize.value = selected.dataset.size || '';
+        sizColor.value = selected.dataset.color || '';
+        if (!barcode.value) {
+            barcode.value = selected.dataset.barcode || '';
+        }
+        
+        // Обновляем информационный блок
+        variationInfo.innerHTML = `
+            <p class="mb-1"><strong>Размер:</strong> ${selected.dataset.size || '—'}</p>
+            <p class="mb-1"><strong>Цвет:</strong> ${selected.dataset.color || '—'}</p>
+            <p class="mb-0"><strong>Штрих-код:</strong> ${selected.dataset.barcode || '—'}</p>
+        `;
+    } else {
+        sizSize.value = '';
+        sizColor.value = '';
+        variationInfo.innerHTML = '<p class="mb-0 text-muted">Выберите модификацию для просмотра информации</p>';
+    }
+});
+
+// Генерация штрих-кода
+function generateBarcode() {
+    const barcodeField = document.getElementById('barcode');
+    const nomenId = document.getElementById('nomenclature_id').value;
+    
+    if (!nomenId) {
+        showToast('Сначала выберите номенклатуру', 'warning');
+        return;
+    }
+    
+    fetch('/api/generate-barcode', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            nomenclature_id: nomenId,
+            current_id: document.getElementById('instance_id')?.value
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            barcodeField.value = data.barcode;
+        } else {
+            showToast('Ошибка генерации: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        showToast('Ошибка при генерации штрих-кода', 'error');
+    });
+}
+
+// Расчет дат поверки и ТО
+$(document).ready(function() {
+    $('#last_calibration, #calibration_interval').change(function() {
+        var lastDate = $('#last_calibration').val();
+        var interval = $('#calibration_interval').val();
+        
+        if (lastDate && interval) {
+            var date = new Date(lastDate);
+            date.setDate(date.getDate() + parseInt(interval));
+            var year = date.getFullYear();
+            var month = String(date.getMonth() + 1).padStart(2, '0');
+            var day = String(date.getDate()).padStart(2, '0');
+            $('#next_calibration').val(year + '-' + month + '-' + day);
+        }
+    });
+    
+    $('#last_maintenance, #maintenance_interval').change(function() {
+        var lastDate = $('#last_maintenance').val();
+        var interval = $('#maintenance_interval').val();
+        
+        if (lastDate && interval) {
+            var date = new Date(lastDate);
+            date.setDate(date.getDate() + parseInt(interval));
+            var year = date.getFullYear();
+            var month = String(date.getMonth() + 1).padStart(2, '0');
+            var day = String(date.getDate()).padStart(2, '0');
+            $('#next_maintenance').val(year + '-' + month + '-' + day);
+        }
+    });
+});
+
+// Если это редактирование, загружаем модификации при загрузке страницы
+$(document).ready(function() {
+    const nomenSelect = document.getElementById('nomenclature_id');
+    if (nomenSelect && nomenSelect.value && !nomenSelect.disabled) {
+        // Искусственно вызываем событие change для загрузки модификаций
+        const event = new Event('change', { bubbles: true });
+        nomenSelect.dispatchEvent(event);
+    }
+});
+</script>
+
+<style>
+.form-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+#inventory_status {
+    margin-top: 0.5rem;
+}
+.bg-warning {
+    background-color: #fff3cd !important;
+}
+</style>
+{% endblock %}

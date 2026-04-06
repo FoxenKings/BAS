@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_translation('reports', 'employee_issuance') }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-user-tie"></i> {{ get_translation('reports', 'employee_issuance') }}
+        </h1>
+        <div>
+            <button class="btn btn-success" onclick="exportToExcel()">
+                <i class="fas fa-file-excel"></i> {{ get_translation('common', 'export') }}
+            </button>
+            <a href="{{ url_for('reports.reports') }}" class="btn btn-primary">
+                <i class="fas fa-arrow-left"></i> {{ get_translation('reports', 'back_to_reports') }}
+            </a>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-filter"></i> {{ get_translation('reports', 'period_filter') }}
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="date_from" class="form-label">{{ get_translation('reports', 'date_from') }}</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from" 
+                           value="{{ request.args.get('date_from') or (now().replace(day=1)).strftime('%Y-%m-%d') }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="date_to" class="form-label">{{ get_translation('reports', 'date_to') }}</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to" 
+                           value="{{ request.args.get('date_to') or now().strftime('%Y-%m-%d') }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="employee_id" class="form-label">{{ get_translation('employees', 'title') }}</label>
+                    <select class="form-select" id="employee_id" name="employee_id">
+                        <option value="">{{ get_translation('reports', 'all_employees') }}</option>
+                        {% for e in employees %}
+                        <option value="{{ e.id }}" {% if request.args.get('employee_id')|int == e.id %}selected{% endif %}>
+                            {{ e.full_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> {{ get_translation('common', 'apply') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Ключевые показатели -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--primary-color), #1a252f);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('reports', 'total_issued') }}</h6>
+                    <h3 class="stat-value">{{ summary.total_issued }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--success-color), #218838);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('reports', 'on_hands') }}</h6>
+                    <h3 class="stat-value">{{ summary.on_hands }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--warning-color), #e0a800);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('reports', 'employees_count') }}</h6>
+                    <h3 class="stat-value">{{ summary.employees }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--info-color), #138496);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('reports', 'total_amount') }}</h6>
+                    <h3 class="stat-value">{{ format_currency(summary.total_amount) }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- График -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-chart-bar"></i> {{ get_translation('reports', 'top_employees') }}
+        </div>
+        <div class="card-body">
+            <canvas id="employeeChart" style="height: 400px;"></canvas>
+        </div>
+    </div>
+
+    <!-- Таблица по сотрудникам -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-users"></i> {{ get_translation('reports', 'employee_statistics') }}
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="employeeTable">
+                    <thead>
+                        <tr>
+                            <th>{{ get_translation('employees', 'full_name') }}</th>
+                            <th>{{ get_translation('departments', 'title') }}</th>
+                            <th>{{ get_translation('employees', 'position') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'issued') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'on_hands') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'returned') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'overdue') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'total_amount') }}</th>
+                            <th>{{ get_translation('common', 'actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for emp in employee_stats %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('employees.view_employee', id=emp.id) }}">{{ emp.full_name }}</a>
+                            </td>
+                            <td>
+                                {% if emp.department_id %}
+                                <a href="{{ url_for('employees.department_detail', id=emp.department_id) }}">{{ emp.department_name }}</a>
+                                {% else %}—{% endif %}
+                            </td>
+                            <td>{{ emp.position or '—' }}</td>
+                            <td class="text-end">{{ emp.total_issued }}</td>
+                            <td class="text-end">{{ emp.on_hands }}</td>
+                            <td class="text-end">{{ emp.returned }}</td>
+                            <td class="text-end">
+                                {% if emp.overdue > 0 %}
+                                <span class="badge bg-danger">{{ emp.overdue }}</span>
+                                {% else %}
+                                <span class="badge bg-success">0</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">{{ format_currency(emp.total_amount) }}</td>
+                            <td>
+                                <a href="{{ url_for('employees.view_employee', id=emp.id) }}" class="btn btn-sm btn-outline-info" title="{{ get_translation('common', 'view') }}">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Детализация выдач -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-list"></i> {{ get_translation('reports', 'issuance_details') }}
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="issuanceTable">
+                    <thead>
+                        <tr>
+                            <th>{{ get_translation('common', 'date') }}</th>
+                            <th>{{ get_translation('employees', 'title') }}</th>
+                            <th>{{ get_translation('documents', 'document_number') }}</th>
+                            <th>{{ get_translation('nomenclatures', 'name') }}</th>
+                            <th>{{ get_translation('instances', 'inventory_number') }}</th>
+                            <th class="text-end">{{ get_translation('common', 'quantity') }}</th>
+                            <th>{{ get_translation('instances', 'expected_return_date') }}</th>
+                            <th>{{ get_translation('common', 'status') }}</th>
+                            <th>{{ get_translation('common', 'actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for issue in issuances %}
+                        <tr class="{% if issue.is_overdue %}table-danger{% endif %}">
+                            <td>{{ format_date(issue.issued_date) }}</td>
+                            <td>
+                                <a href="{{ url_for('employees.view_employee', id=issue.employee_id) }}">{{ issue.employee_name }}</a>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('documents.view_document', id=issue.document_id) }}">
+                                    {{ issue.document_number }}
+                                </a>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('nomenclatures.edit_nomenclature', id=issue.nomenclature_id) }}">{{ issue.nomenclature_name }}</a>
+                            </td>
+                            <td>
+                                {% if issue.inventory_number %}
+                                <a href="{{ url_for('instances.view_instance', inventory_number=issue.inventory_number) }}"><code>{{ issue.inventory_number }}</code></a>
+                                {% else %}—{% endif %}
+                            </td>
+                            <td class="text-end">{{ format_number(issue.quantity) }}</td>
+                            <td>
+                                {{ format_date(issue.expected_return_date) or '—' }}
+                                {% if issue.is_overdue %}
+                                <span class="badge bg-danger">{{ get_translation('reports', 'overdue') }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if issue.actual_return_date %}
+                                <span class="badge bg-success">{{ get_translation('reports', 'returned') }}</span>
+                                {% else %}
+                                <span class="badge bg-primary">{{ get_translation('reports', 'issued') }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if not issue.actual_return_date %}
+                                <button class="btn btn-sm btn-success" onclick="returnItem({{ issue.id }})" title="{{ get_translation('reports', 'return_item') }}">
+                                    <i class="fas fa-undo"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#employeeTable, #issuanceTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/ru.json'
+        },
+        order: [[0, 'asc']],
+        pageLength: 25
+    });
+
+    // График по сотрудникам
+    try {
+    var ctx = document.getElementById('employeeChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: {{ chart_labels|tojson }},
+            datasets: [{
+                label: '{{ get_translation('reports', 'items_count') }}',
+                data: {{ chart_data|tojson }},
+                backgroundColor: '#007bff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '{{ get_translation('common', 'quantity') }}'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: '{{ get_translation('reports', 'top_employees') }}'
+                }
+            }
+        }
+    });
+    } catch(e) { console.error('Chart init error:', e); }
+});
+
+function returnItem(itemId) {
+    Swal.fire({
+        title: '{{ get_translation('reports', 'return_item') }}',
+        text: '{{ get_translation('reports', 'confirm_return') }}',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '{{ get_translation('common', 'yes') }}',
+        cancelButtonText: '{{ get_translation('common', 'cancel') }}'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Здесь будет API для возврата
+            Swal.fire('{{ get_translation('common', 'success') }}', '{{ get_translation('reports', 'item_returned') }}', 'success');
+            setTimeout(() => location.reload(), 1500);
+        }
+    });
+}
+
+function exportToExcel() {
+    var table = document.getElementById('issuanceTable');
+    var wb = XLSX.utils.table_to_book(table, {sheet: "{{ get_translation('reports', 'employee_issuance') }}"});
+    XLSX.writeFile(wb, "employee_issuance_{{ now().strftime('%Y%m%d') }}.xlsx");
+}
+</script>
+{% endblock %}

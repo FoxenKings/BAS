@@ -1,0 +1,89 @@
+<!-- 500.html -->
+{% extends "base.html" %}
+
+{% block title %}500 - Ошибка сервера{% endblock %}
+
+{% block content %}
+<div class="container text-center py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="error-page">
+                <div class="mb-4">
+                    <i class="fas fa-exclamation-triangle text-warning" style="font-size: 80px;"></i>
+                    <i class="fas fa-cogs text-secondary mx-3" style="font-size: 80px;"></i>
+                </div>
+                <h1 class="display-1 text-danger fw-bold">500</h1>
+                <h2 class="mb-4">Внутренняя ошибка сервера</h2>
+                <p class="lead text-muted mb-4">
+                    Произошла непредвиденная ошибка в системе номенклатурного учета.
+                    <br>Наши разработчики уже уведомлены и работают над исправлением.
+                </p>
+                
+                <div class="alert alert-warning mb-4">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <strong>Детали ошибки:</strong> 
+                    {% if error_id %}
+                    <code class="ms-2">{{ error_id }}</code>
+                    {% endif %}
+                    <br>
+                    <small class="text-muted">
+                        Пожалуйста, попробуйте обновить страницу или вернуться позже.
+                    </small>
+                </div>
+                
+                <div class="mt-5">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg me-3">
+                        <i class="fas fa-home"></i> На главную
+                    </a>
+                    <button onclick="location.reload()" class="btn btn-outline-warning btn-lg me-3">
+                        <i class="fas fa-redo"></i> Обновить
+                    </button>
+                    <a href="{{ url_for('nomenclatures.nomenclatures_list') }}" class="btn btn-outline-success btn-lg">
+                        <i class="fas fa-tag"></i> К номенклатуре
+                    </a>
+                </div>
+                
+                <div class="mt-5 p-4 bg-light rounded">
+                    <h6><i class="fas fa-bug"></i> Диагностическая информация:</h6>
+                    <div class="d-flex justify-content-center gap-4">
+                        <div>
+                            <span class="badge bg-secondary">Версия: 7.0</span>
+                        </div>
+                        <div>
+                            <span class="badge bg-info">Номенклатурный учет</span>
+                        </div>
+                        <div>
+                            <span class="badge bg-primary">
+                                {{ now().strftime('%d.%m.%Y %H:%M') if now else '2025-02-13' }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Автоматическая отправка отчета об ошибке
+$(document).ready(function() {
+    const errorData = {
+        url: window.location.href,
+        user: "{{ current_user.username if current_user.is_authenticated else 'anonymous' }}",
+        timestamp: new Date().toISOString(),
+        user_agent: navigator.userAgent
+    };
+    
+    // Отправляем диагностику на сервер (асинхронно)
+    $.ajax({
+        url: '/api/diagnostic/error',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(errorData),
+        complete: function() {
+            console.log('Error report sent');
+        }
+    });
+});
+</script>
+{% endblock %}

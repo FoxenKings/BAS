@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_translation('reports', 'low_stock') }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-exclamation-triangle text-warning"></i> {{ get_translation('reports', 'low_stock') }}
+        </h1>
+        <div>
+            <button class="btn btn-success" onclick="exportToExcel()">
+                <i class="fas fa-file-excel"></i> {{ get_translation('common', 'export') }}
+            </button>
+            <a href="{{ url_for('reports.reports') }}" class="btn btn-primary">
+                <i class="fas fa-arrow-left"></i> {{ get_translation('reports', 'back_to_reports') }}
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-table"></i> {{ get_translation('reports', 'items_to_reorder') }}
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="lowStockTable">
+                    <thead>
+                        <tr>
+                            <th>{{ get_translation('nomenclatures', 'sku') }}</th>
+                            <th>{{ get_translation('nomenclatures', 'name') }}</th>
+                            <th>{{ get_translation('categories', 'title') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'current_stock') }}</th>
+                            <th class="text-end">{{ get_translation('nomenclatures', 'min_stock') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'needed') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'warehouses_count') }}</th>
+                            <th>{{ get_translation('common', 'actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in low_stock %}
+                        <tr>
+                            <td><code>{{ item.sku }}</code></td>
+                            <td><a href="{{ url_for('nomenclatures.edit_nomenclature', id=item.id) }}">{{ item.nomenclature_name }}</a></td>
+                            <td>{{ item.category_name or '—' }}</td>
+                            <td class="text-end text-danger fw-bold">{{ format_number(item.total_quantity or 0) }}</td>
+                            <td class="text-end">{{ format_number(item.min_stock) }}</td>
+                            <td class="text-end">{{ format_number(item.min_stock - (item.total_quantity or 0)) }}</td>
+                            <td class="text-end">{{ item.warehouses_count or 0 }}</td>
+                            <td>
+                                <a href="{{ url_for('documents.add_document', doc_type='receipt') }}?nomenclature_id={{ item.id }}" 
+                                   class="btn btn-sm btn-warning">
+                                    <i class="fas fa-shopping-cart"></i> {{ get_translation('reports', 'order') }}
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted empty-state">
+                                <i class="fas fa-check-circle text-success fa-2x mb-3"></i>
+                                <p>{{ get_translation('reports', 'no_low_stock') }}</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#lowStockTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/ru.json'
+        },
+        order: [[3, 'asc']],
+        pageLength: 25
+    });
+});
+
+function exportToExcel() {
+    var table = document.getElementById('lowStockTable');
+    var wb = XLSX.utils.table_to_book(table, {sheet: "{{ get_translation('reports', 'low_stock') }}"});
+    XLSX.writeFile(wb, "low_stock_{{ now().strftime('%Y%m%d') }}.xlsx");
+}
+</script>
+{% endblock %}

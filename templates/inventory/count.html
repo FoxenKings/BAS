@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_translation('inventories', 'count_title', number=inventory.inventory_number) }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-clipboard-check"></i> {{ get_translation('inventories', 'count_title', number=inventory.inventory_number) }}
+        </h1>
+        <div>
+            <span class="badge bg-{{ 
+                'warning' if inventory.status == 'in_progress' else 
+                'success' if inventory.status == 'completed' else 
+                'secondary' 
+            }} fs-6 me-2">
+                {% if inventory.status == 'in_progress' %}
+                    {{ get_translation('statuses', 'in_progress')|upper }}
+                {% elif inventory.status == 'completed' %}
+                    {{ get_translation('statuses', 'completed')|upper }}
+                {% else %}
+                    {{ get_status_text(inventory.status)|upper }}
+                {% endif %}
+            </span>
+            <a href="{{ url_for('inventory.inventory_list') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> {{ get_translation('common', 'back') }}
+            </a>
+        </div>
+    </div>
+
+    <!-- Информация о складе -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--primary-color), #1a252f);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('warehouses', 'title') }}</h6>
+                    <h5 class="stat-value">{{ inventory.warehouse_name }}</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--info-color), #138496);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('inventories', 'total_items') }}</h6>
+                    <h5 class="stat-value">{{ stats.total }}</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--success-color), #218838);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('inventories', 'checked') }}</h6>
+                    <h5 class="stat-value">{{ stats.checked }} ({{ "%.1f"|format(stats.percentage) }}%)</h5>
+                    <div class="progress mt-2" style="height: 10px;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {{ stats.percentage }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Сканер штрих-кодов -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-barcode"></i> {{ get_translation('inventories', 'barcode_scan') }}
+        </div>
+        <div class="card-body">
+            <div class="input-group">
+                <input type="text" class="form-control" id="barcodeInput" 
+                       placeholder="{{ get_translation('inventories', 'barcode_placeholder') }}" autofocus>
+                <button class="btn btn-primary" type="button" id="findByBarcode">
+                    <i class="fas fa-search"></i> {{ get_translation('common', 'search') }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица для подсчета -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-table"></i> {{ get_translation('inventories', 'items_to_count') }}
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="countTable">
+                    <thead>
+                        <tr>
+                            <th>{{ get_translation('nomenclatures', 'sku') }}</th>
+                            <th>{{ get_translation('nomenclatures', 'name') }}</th>
+                            <th>{{ get_translation('batches', 'title') }}</th>
+                            <th>{{ get_translation('storage_bins', 'title') }}</th>
+                            <th class="text-end">{{ get_translation('inventories', 'expected') }}</th>
+                            <th>{{ get_translation('inventories', 'actual') }}</th>
+                            <th class="text-end">{{ get_translation('inventories', 'variance') }}</th>
+                            <th>{{ get_translation('common', 'status') }}</th>
+                            <th>{{ get_translation('common', 'actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr class="{{ 'table-success' if item.verified else '' }}
+                                   {{ 'table-danger' if item.variance != 0 else '' }}">
+                            <td><code>{{ item.sku }}</code></td>
+                            <td>
+                                <a href="{{ url_for('nomenclatures.edit_nomenclature', id=item.nomenclature_id) }}">{{ item.nomenclature_name }}</a>
+                            </td>
+                            <td>
+                                {% if item.batch_number %}
+                                <a href="{{ url_for('warehouses.edit_batch', id=item.batch_id) }}"><span class="badge bg-info">{{ item.batch_number }}</span></a>
+                                {% else %}—{% endif %}
+                            </td>
+                            <td>
+                                {% if item.storage_bin_id %}
+                                <a href="{{ url_for('warehouses.view_storage_bin', id=item.storage_bin_id) }}">{{ item.storage_bin_code or '—' }}</a>
+                                {% else %}—{% endif %}
+                            </td>
+                            <td class="text-end">{{ format_number(item.expected_quantity) }}</td>
+                            <td>
+                                {% if not item.verified %}
+                                <input type="number" class="form-control form-control-sm actual-quantity" 
+                                       data-id="{{ item.id }}" value="{{ item.actual_quantity }}"
+                                       style="width: 100px;" min="0" step="1">
+                                {% else %}
+                                <span class="fw-bold">{{ format_number(item.actual_quantity) }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {% if item.variance > 0 %}
+                                <span class="text-success">+{{ format_number(item.variance) }}</span>
+                                {% elif item.variance < 0 %}
+                                <span class="text-danger">{{ format_number(item.variance) }}</span>
+                                {% else %}
+                                0
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.verified %}
+                                <span class="badge bg-success">{{ get_translation('inventories', 'verified') }}</span>
+                                {% else %}
+                                <span class="badge bg-warning">{{ get_translation('inventories', 'pending') }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if not item.verified %}
+                                <button class="btn btn-sm btn-success" onclick="verifyItem({{ item.id }})" title="{{ get_translation('inventories', 'verify') }}">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer">
+            {% if inventory.status == 'in_progress' %}
+            <button class="btn btn-success" onclick="completeInventory()">
+                <i class="fas fa-check-circle"></i> {{ get_translation('inventories', 'complete') }}
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // Обработка ввода штрих-кода
+    $('#barcodeInput').keypress(function(e) {
+        if (e.which == 13) {
+            e.preventDefault();
+            $('#findByBarcode').click();
+        }
+    });
+    
+    $('#findByBarcode').click(function() {
+        var barcode = $('#barcodeInput').val().trim();
+        if (barcode) {
+            // Ищем позицию по штрих-коду
+            var found = false;
+            $('#countTable tbody tr').each(function() {
+                var sku = $(this).find('code').first().text();
+                if (sku == barcode || sku.includes(barcode)) {
+                    // Убираем подсветку у всех
+                    $('#countTable tbody tr').removeClass('table-info');
+                    // Подсвечиваем найденную
+                    $(this).addClass('table-info');
+                    // Прокручиваем к элементу
+                    $('html, body').animate({
+                        scrollTop: $(this).offset().top - 100
+                    }, 500);
+                    // Фокусируемся на поле ввода
+                    $(this).find('input').focus();
+                    found = true;
+                    return false;
+                }
+            });
+            
+            if (!found) {
+                Swal.fire('{{ get_translation('common', 'not_found') }}', 
+                         '{{ get_translation('inventories', 'barcode_not_found') }}', 
+                         'warning');
+            }
+            $('#barcodeInput').val('');
+        }
+    });
+    
+    // Автоматическое сохранение при изменении количества
+    $('.actual-quantity').on('change', function() {
+        var itemId = $(this).data('id');
+        var quantity = $(this).val();
+        saveActualQuantity(itemId, quantity);
+    });
+});
+
+function saveActualQuantity(itemId, quantity) {
+    fetch(`/inventory/item/${itemId}/update`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ actual_quantity: quantity })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Обновляем расхождение
+            location.reload();
+        }
+    });
+}
+
+function verifyItem(itemId) {
+    fetch(`/inventory/item/${itemId}/verify`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+
+function completeInventory() {
+    Swal.fire({
+        title: '{{ get_translation('inventories', 'complete_title') }}',
+        html: `<p>{{ get_translation('inventories', 'complete_message') }}</p>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '{{ get_translation('common', 'yes') }}',
+        cancelButtonText: '{{ get_translation('common', 'cancel') }}'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/inventory/{{ inventory.id }}/complete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire('{{ get_translation('common', 'success') }}', data.message, 'success');
+                    setTimeout(() => window.location.href = "{{ url_for('inventory.view_inventory', id=inventory.id) }}", 1500);
+                } else {
+                    Swal.fire('{{ get_translation('common', 'error') }}', data.error, 'error');
+                }
+            });
+        }
+    });
+}
+</script>
+{% endblock %}

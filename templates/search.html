@@ -1,0 +1,759 @@
+{% extends "base.html" %}
+
+{% block title %}Поиск - Номенклатура и экземпляры{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Главная</a></li>
+                    <li class="breadcrumb-item active"><i class="fas fa-search"></i> Поиск</li>
+                </ol>
+            </nav>
+            
+            <h1 class="page-title">
+                <i class="fas fa-search text-primary"></i> Поиск по номенклатуре
+            </h1>
+            <p class="text-muted">
+                Поиск по справочнику номенклатуры, экземплярам, серийным и инвентарным номерам
+            </p>
+        </div>
+    </div>
+
+    <!-- Расширенная форма поиска -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body p-4">
+            <form id="searchForm" class="row g-3">
+                <!-- Основная строка поиска -->
+                <div class="col-md-8">
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text bg-white">
+                            <i class="fas fa-search text-primary"></i>
+                        </span>
+                        <input type="text" id="searchInput" class="form-control form-control-lg border-start-0" 
+                               placeholder="Название, SKU, инвентарный номер, серийный номер, штрих-код..."
+                               value="{{ request.args.get('q', '') }}"
+                               autofocus>
+                        <button class="btn btn-primary btn-lg" type="submit" id="searchButton">
+                            <i class="fas fa-search"></i> Найти
+                        </button>
+                    </div>
+                    <div class="form-text mt-2">
+                        <i class="fas fa-info-circle"></i> 
+                        Можно искать по: наименованию, артикулу (SKU), инвентарному номеру, серийному номеру, штрих-коду
+                    </div>
+                </div>
+                
+                <!-- Фильтры -->
+                <div class="col-md-4">
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <select id="searchType" class="form-select form-select-lg">
+                                <option value="all" {% if request.args.get('type') == 'all' %}selected{% endif %}>Все типы</option>
+                                <option value="nomenclature" {% if request.args.get('type') == 'nomenclature' %}selected{% endif %}>
+                                    <i class="fas fa-tag"></i> Номенклатура (карточки)
+                                </option>
+                                <option value="instance" {% if request.args.get('type') == 'instance' %}selected{% endif %}>
+                                    <i class="fas fa-cube"></i> Экземпляры (инв. учет)
+                                </option>
+                                <option value="batch" {% if request.args.get('type') == 'batch' %}selected{% endif %}>
+                                    <i class="fas fa-layer-group"></i> Партии
+                                </option>
+                                <option value="stock" {% if request.args.get('type') == 'stock' %}selected{% endif %}>
+                                    <i class="fas fa-boxes"></i> Запасы
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Дополнительные фильтры (скрыты по умолчанию) -->
+                <div class="col-12 mt-3" id="advancedFilters" style="display: none;">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <label class="form-label">Категория</label>
+                                    <select id="categoryFilter" class="form-select">
+                                        <option value="">Все категории</option>
+                                        {% for category in categories %}
+                                        <option value="{{ category.id }}">{{ category.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Статус</label>
+                                    <select id="statusFilter" class="form-select">
+                                        <option value="">Все статусы</option>
+                                        <option value="in_stock">На складе</option>
+                                        <option value="in_use">В использовании</option>
+                                        <option value="under_repair">В ремонте</option>
+                                        <option value="written_off">Списан</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Местоположение</label>
+                                    <select id="locationFilter" class="form-select">
+                                        <option value="">Все места</option>
+                                        {% for location in locations %}
+                                        <option value="{{ location.id }}">{{ location.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Склад</label>
+                                    <select id="warehouseFilter" class="form-select">
+                                        <option value="">Все склады</option>
+                                        {% for warehouse in warehouses %}
+                                        <option value="{{ warehouse.id }}">{{ warehouse.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Кнопка показа дополнительных фильтров -->
+                <div class="col-12 text-end">
+                    <button type="button" class="btn btn-sm btn-link" id="toggleAdvancedFilters">
+                        <i class="fas fa-filter"></i> 
+                        <span id="advancedFiltersText">Расширенный поиск</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Результаты поиска -->
+    <div id="searchResults" class="mt-4">
+        <!-- Результаты будут загружены здесь -->
+        <div class="text-center text-muted py-5">
+            <i class="fas fa-search fa-4x mb-3 text-secondary opacity-50"></i>
+            <h5 class="text-secondary">Введите поисковый запрос</h5>
+            <p class="text-muted">Начните вводить текст для поиска по справочнику</p>
+            
+            <div class="row justify-content-center mt-4">
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6><i class="fas fa-lightbulb"></i> Примеры запросов:</h6>
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                <span class="badge bg-secondary p-2 cursor-pointer" onclick="setSearchQuery('Ноутбук')">Ноутбук</span>
+                                <span class="badge bg-secondary p-2 cursor-pointer" onclick="setSearchQuery('INV-2024')">INV-2024</span>
+                                <span class="badge bg-secondary p-2 cursor-pointer" onclick="setSearchQuery('SN123456')">SN123456</span>
+                                <span class="badge bg-secondary p-2 cursor-pointer" onclick="setSearchQuery('NOM-00001')">NOM-00001</span>
+                                <span class="badge bg-secondary p-2 cursor-pointer" onclick="setSearchQuery('BATCH-2025')">BATCH-2025</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Шаблоны для результатов поиска (скрыты) -->
+<template id="resultTemplateNomenclature">
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100 result-card result-nomenclature">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-primary me-2"><i class="fas fa-tag"></i> Номенклатура</span>
+                            <span class="badge bg-secondary">SKU: {sku}</span>
+                        </div>
+                        <h5 class="card-title mb-1">{name}</h5>
+                        <p class="text-muted small mb-2">{category_name}</p>
+                        
+                        <div class="mt-2 small">
+                            {description}
+                        </div>
+                        
+                        <div class="mt-2">
+                            <span class="badge bg-{accounting_badge}">{accounting_type_display}</span>
+                        </div>
+                        
+                        <div class="mt-3 d-flex gap-2">
+                            <a href="{view_url}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i> Просмотр
+                            </a>
+                            <button onclick="quickIssue({id})" class="btn btn-sm btn-outline-success">
+                                <i class="fas fa-hand-holding"></i> Выдать
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<template id="resultTemplateInstance">
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100 result-card result-instance">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-success me-2"><i class="fas fa-cube"></i> Экземпляр</span>
+                            <span class="badge bg-info">Инв. №: {inventory_number}</span>
+                        </div>
+                        <h5 class="card-title mb-1">{nomenclature_name}</h5>
+                        <p class="text-muted small mb-2">{category_name}</p>
+                        
+                        <div class="mt-2">
+                            <span class="badge bg-{status_color}">{status_display}</span>
+                            <span class="badge bg-secondary ms-1">{condition_display}</span>
+                        </div>
+                        
+                        <div class="mt-2 small">
+                            <div><i class="fas fa-map-marker-alt"></i> {location_name}</div>
+                            <div><i class="fas fa-user"></i> {employee_name}</div>
+                            {serial_number}
+                        </div>
+                        
+                        <div class="mt-3 d-flex gap-2">
+                            <a href="{view_url}" class="btn btn-sm btn-outline-success">
+                                <i class="fas fa-eye"></i> Просмотр
+                            </a>
+                            <button onclick="moveInstance({id})" class="btn btn-sm btn-outline-warning">
+                                <i class="fas fa-exchange-alt"></i> Переместить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<template id="resultTemplateBatch">
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100 result-card result-batch">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-warning text-dark me-2"><i class="fas fa-layer-group"></i> Партия</span>
+                        </div>
+                        <h5 class="card-title mb-1">{nomenclature_name}</h5>
+                        <p class="fw-bold mb-1">Партия: {batch_number}</p>
+                        
+                        <div class="mt-2">
+                            <span class="badge bg-{quality_color}">{quality_status}</span>
+                        </div>
+                        
+                        <div class="mt-2 small">
+                            {expiry_date}
+                            <div>Остаток: {quantity} {unit}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<template id="resultTemplateStock">
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100 result-card result-stock">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-info me-2"><i class="fas fa-boxes"></i> Запас</span>
+                        </div>
+                        <h5 class="card-title mb-1">{nomenclature_name}</h5>
+                        <p class="text-muted small mb-2">SKU: {sku}</p>
+                        
+                        <div class="mt-2">
+                            <div class="d-flex justify-content-between">
+                                <span>Количество:</span>
+                                <span class="fw-bold">{quantity} {unit}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Склад:</span>
+                                <span>{warehouse_name}</span>
+                            </div>
+                            {batch_info}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Переменные для пагинации
+    let currentPage = 1;
+    let totalPages = 1;
+    let currentQuery = '';
+    let currentType = 'all';
+    
+    // Инициализация поиска из URL параметров
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryParam = urlParams.get('q');
+    const typeParam = urlParams.get('type');
+    
+    if (queryParam) {
+        $('#searchInput').val(queryParam);
+        if (typeParam) {
+            $('#searchType').val(typeParam);
+        }
+        performSearch();
+    }
+    
+    // Поиск при клике на кнопку
+    $('#searchForm').on('submit', function(e) {
+        e.preventDefault();
+        currentPage = 1;
+        performSearch();
+    });
+    
+    // Поиск при вводе (debounce)
+    let searchTimer;
+    $('#searchInput').on('input', function() {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(function() {
+            currentPage = 1;
+            performSearch();
+        }, 500);
+    });
+    
+    // Переключение расширенных фильтров
+    $('#toggleAdvancedFilters').click(function() {
+        const filters = $('#advancedFilters');
+        const text = $('#advancedFiltersText');
+        
+        if (filters.is(':visible')) {
+            filters.slideUp();
+            text.text('Расширенный поиск');
+            $(this).find('i').removeClass('fa-chevron-up').addClass('fa-filter');
+        } else {
+            filters.slideDown();
+            text.text('Скрыть фильтры');
+            $(this).find('i').removeClass('fa-filter').addClass('fa-chevron-up');
+        }
+    });
+    
+    // Функция выполнения поиска
+    function performSearch() {
+        const query = $('#searchInput').val().trim();
+        currentQuery = query;
+        const searchType = $('#searchType').val();
+        currentType = searchType;
+        
+        // Обновляем URL без перезагрузки
+        const url = new URL(window.location);
+        if (query) {
+            url.searchParams.set('q', query);
+            url.searchParams.set('type', searchType);
+        } else {
+            url.searchParams.delete('q');
+            url.searchParams.delete('type');
+        }
+        window.history.replaceState({}, '', url);
+        
+        if (!query) {
+            $('#searchResults').html(`
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-search fa-4x mb-3 text-secondary opacity-50"></i>
+                    <h5 class="text-secondary">Введите поисковый запрос</h5>
+                    <p class="text-muted">Начните вводить текст для поиска по справочнику</p>
+                </div>
+            `);
+            return;
+        }
+        
+        // Показываем индикатор загрузки
+        $('#searchResults').html(`
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Загрузка...</span>
+                </div>
+                <p class="mt-3 text-muted">Поиск: "${escapeHtml(query)}"</p>
+            </div>
+        `);
+        
+        // Собираем параметры запроса
+        const params = {
+            q: query,
+            type: searchType,
+            page: currentPage,
+            limit: 20
+        };
+        
+        // Добавляем дополнительные фильтры, если они видны
+        if ($('#advancedFilters').is(':visible')) {
+            if ($('#categoryFilter').val()) params.category_id = $('#categoryFilter').val();
+            if ($('#statusFilter').val()) params.status = $('#statusFilter').val();
+            if ($('#locationFilter').val()) params.location_id = $('#locationFilter').val();
+            if ($('#warehouseFilter').val()) params.warehouse_id = $('#warehouseFilter').val();
+        }
+        
+        $.ajax({
+            url: '/api/search',
+            method: 'GET',
+            data: params,
+            success: function(response) {
+                displayResults(response);
+            },
+            error: function(xhr) {
+                console.error('Search error:', xhr);
+                $('#searchResults').html(`
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i>
+                        Ошибка при выполнении поиска: ${xhr.responseJSON?.error || 'Неизвестная ошибка'}
+                    </div>
+                `);
+            }
+        });
+    }
+    
+    // Функция отображения результатов
+    function displayResults(response) {
+        const results = response.items || [];
+        const total = response.total || 0;
+        const hasMore = response.has_more || false;
+        
+        if (results.length === 0) {
+            $('#searchResults').html(`
+                <div class="alert alert-info text-center py-4">
+                    <i class="fas fa-info-circle fa-3x mb-3"></i>
+                    <h5>Ничего не найдено</h5>
+                    <p class="mb-0">По запросу "${escapeHtml(currentQuery)}" ничего не найдено</p>
+                    <hr>
+                    <small class="text-muted">
+                        Попробуйте изменить запрос или снять фильтры
+                    </small>
+                </div>
+            `);
+            return;
+        }
+        
+        let html = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>
+                    <i class="fas fa-search"></i> 
+                    Результаты поиска: <span class="text-primary">${total}</span>
+                </h5>
+                <small class="text-muted">
+                    ${currentType === 'all' ? 'Все типы' : $('#searchType option:selected').text()}
+                </small>
+            </div>
+            <div class="row" id="resultsGrid">
+        `;
+        
+        results.forEach(function(item) {
+            if (item.type === 'nomenclature') {
+                html += renderNomenclatureResult(item);
+            } else if (item.type === 'instance') {
+                html += renderInstanceResult(item);
+            } else if (item.type === 'batch') {
+                html += renderBatchResult(item);
+            } else if (item.type === 'stock') {
+                html += renderStockResult(item);
+            }
+        });
+        
+        html += '</div>';
+        
+        // Пагинация
+        if (total > results.length) {
+            html += `
+                <div class="text-center mt-4">
+                    <button class="btn btn-outline-primary" id="loadMoreBtn">
+                        <i class="fas fa-sync-alt"></i> Загрузить еще
+                    </button>
+                </div>
+            `;
+        }
+        
+        $('#searchResults').html(html);
+        
+        // Обработчик кнопки "Загрузить еще"
+        $('#loadMoreBtn').click(function() {
+            currentPage++;
+            performSearch();
+        });
+    }
+    
+    // Функции рендеринга различных типов результатов
+    function renderNomenclatureResult(item) {
+        const accountingLabels = {
+            'individual': 'Инвентарный',
+            'batch': 'Партионный',
+            'quantitative': 'Количественный'
+        };
+        
+        const accountingBadges = {
+            'individual': 'success',
+            'batch': 'warning',
+            'quantitative': 'info'
+        };
+        
+        return `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100 result-card result-nomenclature">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="badge bg-primary me-2"><i class="fas fa-tag"></i> Номенклатура</span>
+                                    <span class="badge bg-secondary">SKU: ${escapeHtml(item.sku)}</span>
+                                </div>
+                                <h5 class="card-title mb-1">${escapeHtml(item.name)}</h5>
+                                <p class="text-muted small mb-2">${escapeHtml(item.category_name || '')}</p>
+                                
+                                ${item.description ? `<div class="mt-2 small">${escapeHtml(item.description.substring(0, 100))}${item.description.length > 100 ? '...' : ''}</div>` : ''}
+                                
+                                <div class="mt-2">
+                                    <span class="badge bg-${accountingBadges[item.accounting_type] || 'secondary'}">
+                                        ${accountingLabels[item.accounting_type] || item.accounting_type}
+                                    </span>
+                                </div>
+                                
+                                <div class="mt-3 d-flex gap-2">
+                                    <a href="/nomenclatures/${item.id}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i> Просмотр
+                                    </a>
+                                    <button onclick="quickIssue(${item.id})" class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-hand-holding"></i> Выдать
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    function renderInstanceResult(item) {
+        const statusColors = {
+            'in_stock': 'success',
+            'in_use': 'primary',
+            'under_repair': 'warning',
+            'written_off': 'secondary',
+            'reserved': 'info',
+            'transferred': 'info'
+        };
+        
+        const statusLabels = {
+            'in_stock': 'На складе',
+            'in_use': 'В использовании',
+            'under_repair': 'В ремонте',
+            'written_off': 'Списан',
+            'reserved': 'Зарезервирован',
+            'transferred': 'Передан'
+        };
+        
+        const conditionLabels = {
+            'good': 'Хорошее',
+            'satisfactory': 'Удовлетворительное',
+            'needs_repair': 'Требует ремонта',
+            'unfit': 'Непригоден',
+            'under_maintenance': 'На обслуживании'
+        };
+        
+        return `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100 result-card result-instance">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="badge bg-success me-2"><i class="fas fa-cube"></i> Экземпляр</span>
+                                    <span class="badge bg-info">Инв. №: ${escapeHtml(item.inventory_number)}</span>
+                                </div>
+                                <h5 class="card-title mb-1">${escapeHtml(item.nomenclature_name)}</h5>
+                                <p class="text-muted small mb-2">${escapeHtml(item.category_name || '')}</p>
+                                
+                                <div class="mt-2">
+                                    <span class="badge bg-${statusColors[item.status] || 'secondary'}">
+                                        ${statusLabels[item.status] || item.status}
+                                    </span>
+                                    <span class="badge bg-secondary ms-1">
+                                        ${conditionLabels[item.condition] || item.condition}
+                                    </span>
+                                </div>
+                                
+                                <div class="mt-2 small">
+                                    <div><i class="fas fa-map-marker-alt"></i> ${escapeHtml(item.location_name || 'Не указано')}</div>
+                                    <div><i class="fas fa-user"></i> ${escapeHtml(item.employee_name || 'Не назначен')}</div>
+                                    ${item.serial_number ? `<div><i class="fas fa-barcode"></i> SN: ${escapeHtml(item.serial_number)}</div>` : ''}
+                                </div>
+                                
+                                <div class="mt-3 d-flex gap-2">
+                                    <a href="/instances/${item.inventory_number}" class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-eye"></i> Просмотр
+                                    </a>
+                                    <button onclick="moveInstance(${item.id})" class="btn btn-sm btn-outline-warning">
+                                        <i class="fas fa-exchange-alt"></i> Переместить
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    function renderBatchResult(item) {
+        const qualityColors = {
+            'approved': 'success',
+            'quarantine': 'warning',
+            'rejected': 'danger',
+            'expired': 'secondary'
+        };
+        
+        return `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100 result-card result-batch">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="badge bg-warning text-dark me-2"><i class="fas fa-layer-group"></i> Партия</span>
+                                </div>
+                                <h5 class="card-title mb-1">${escapeHtml(item.nomenclature_name)}</h5>
+                                <p class="fw-bold mb-1">Партия: ${escapeHtml(item.batch_number)}</p>
+                                
+                                <div class="mt-2">
+                                    <span class="badge bg-${qualityColors[item.quality_status] || 'secondary'}">
+                                        ${item.quality_status_display || item.quality_status}
+                                    </span>
+                                </div>
+                                
+                                <div class="mt-2 small">
+                                    ${item.expiry_date ? `<div><i class="fas fa-calendar-times"></i> Срок: ${item.expiry_date}</div>` : ''}
+                                    <div><i class="fas fa-boxes"></i> Остаток: ${item.quantity} ${item.unit || 'шт.'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    function renderStockResult(item) {
+        return `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100 result-card result-stock">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="badge bg-info me-2"><i class="fas fa-boxes"></i> Запас</span>
+                                </div>
+                                <h5 class="card-title mb-1">${escapeHtml(item.nomenclature_name)}</h5>
+                                <p class="text-muted small mb-2">SKU: ${escapeHtml(item.sku || '')}</p>
+                                
+                                <div class="mt-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Количество:</span>
+                                        <span class="fw-bold">${item.quantity} ${item.unit || 'шт.'}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>Склад:</span>
+                                        <span>${escapeHtml(item.warehouse_name)}</span>
+                                    </div>
+                                    ${item.batch_number ? `
+                                    <div class="d-flex justify-content-between">
+                                        <span>Партия:</span>
+                                        <span>${escapeHtml(item.batch_number)}</span>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Вспомогательная функция для экранирования HTML
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Глобальные функции для быстрых действий
+    window.quickIssue = function(nomenclatureId) {
+        window.location.href = `/documents/add/issuance?nomenclature_id=${nomenclatureId}`;
+    };
+    
+    window.moveInstance = function(instanceId) {
+        window.location.href = `/documents/add/transfer?instance_id=${instanceId}`;
+    };
+    
+    window.setSearchQuery = function(query) {
+        $('#searchInput').val(query);
+        performSearch();
+    };
+    
+    // Подсветка поискового запроса
+    function highlightText(text, query) {
+        if (!query || !text) return escapeHtml(text);
+        const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi');
+        return escapeHtml(text).replace(regex, '<mark>$1</mark>');
+    }
+    
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+});
+</script>
+
+<style>
+.result-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.result-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.result-nomenclature { border-top: 4px solid #0d6efd; }
+.result-instance { border-top: 4px solid #198754; }
+.result-batch { border-top: 4px solid #ffc107; }
+.result-stock { border-top: 4px solid #0dcaf0; }
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.cursor-pointer:hover {
+    background-color: #0d6efd;
+    color: white;
+}
+
+mark {
+    background-color: #fff3cd;
+    padding: 0 2px;
+    border-radius: 2px;
+}
+
+.page-title {
+    color: #2c3e50;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+</style>
+{% endblock %}
+{% endblock %}

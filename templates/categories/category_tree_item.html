@@ -1,0 +1,62 @@
+<li data-id="{{ cat.id }}" data-level="{{ cat.level }}">
+    <div class="category-item">
+        <span class="expander" id="expander-{{ cat.id }}">
+            {% if cat.children and cat.children|length > 0 %}
+                {% if cat.level < 2 %}
+                    <i class="fas fa-chevron-down"></i>
+                {% else %}
+                    <i class="fas fa-chevron-right"></i>
+                {% endif %}
+            {% else %}
+                <span style="width: 22px; display: inline-block;"></span>
+            {% endif %}
+        </span>
+        
+        {% if cat.children and cat.children|length > 0 %}
+            <i class="fas fa-folder folder-icon"></i>
+        {% else %}
+            <i class="fas fa-file file-icon"></i>
+        {% endif %}
+        
+        <span class="category-name">{{ cat.name }}</span>
+        
+        {% if cat.children and cat.children|length > 0 %}
+            <span class="category-badge">{{ cat.children|length }}</span>
+        {% endif %}
+        
+        {% if cat.accounting_type %}
+            <span class="accounting-badge {{ cat.accounting_type }}">
+                {% if cat.accounting_type == 'individual' %}👤 Индивид.
+                {% elif cat.accounting_type == 'batch' %}📦 Партии
+                {% elif cat.accounting_type == 'quantitative' %}📊 Кол-во
+                {% endif %}
+            </span>
+        {% endif %}
+        
+        <span class="category-actions ms-auto">
+            <a href="{{ url_for('categories.categories_edit', id=cat.id) }}" class="btn btn-sm btn-outline-primary" title="Редактировать">
+                <i class="fas fa-edit"></i>
+            </a>
+            <a href="{{ url_for('logs.object_history', entity_type='category', entity_id=cat.id) }}" 
+               class="btn btn-sm btn-outline-info" title="История">
+                <i class="fas fa-history"></i>
+            </a>
+            {% if not cat.children or cat.children|length == 0 %}
+            <button type="button" class="btn btn-sm btn-outline-danger" title="Удалить"
+                    onclick="deleteCategory({{ cat.id }}, '{{ cat.name|escape }}')">
+                <i class="fas fa-trash"></i>
+            </button>
+            {% endif %}
+        </span>
+    </div>
+    
+    {% if cat.children and cat.children|length > 0 %}
+        <ul class="category-children{% if cat.level < 2 %} expanded{% endif %}" id="children-{{ cat.id }}">
+            {% for child in cat.children %}
+                {% with cat=child %}
+                    {% include 'categories/category_tree_item.html' %}
+                {% endwith %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+</li>

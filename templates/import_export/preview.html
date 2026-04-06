@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Предпросмотр импорта{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-eye"></i> Предпросмотр импорта
+        </h1>
+        <div>
+            <a href="{{ url_for('import_export.import_universal') }}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Отмена
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card mb-3">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-chart-pie"></i> Статистика
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        <li class="list-group-item d-flex justify-content-between">
+                            Всего строк: <span class="badge bg-primary">{{ statistics.total_rows }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            Валидных: <span class="badge bg-success">{{ statistics.valid_rows }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            Общее количество: <span class="badge bg-info">{{ statistics.total_quantity }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            Общая сумма: <span class="badge bg-warning">{{ "%.2f"|format(statistics.total_amount) }}</span>
+                        </li>
+                    </ul>
+                    
+                    <h6 class="mt-3">По типу учета:</h6>
+                    <ul class="list-group">
+                        <li class="list-group-item d-flex justify-content-between">
+                            Индивидуальный: <span class="badge bg-primary">{{ statistics.by_type.individual }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            Партионный: <span class="badge bg-success">{{ statistics.by_type.batch }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            Количественный: <span class="badge bg-info">{{ statistics.by_type.quantitative }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <i class="fas fa-cog"></i> Настройки импорта
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="optionsForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="refresh">
+                        <input type="hidden" name="session_id" value="{{ session_id }}">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Тип документа</label>
+                            <select class="form-select" name="document_type">
+                                <option value="receipt">Поступление</option>
+                                <option value="return">Возврат</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="create_missing_suppliers" id="createSuppliers" checked>
+                                <label class="form-check-label" for="createSuppliers">
+                                    Создавать отсутствующих поставщиков
+                                </label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="create_missing_warehouses" id="createWarehouses" checked>
+                                <label class="form-check-label" for="createWarehouses">
+                                    Создавать отсутствующие склады
+                                </label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="create_missing_categories" id="createCategories" checked>
+                                <label class="form-check-label" for="createCategories">
+                                    Создавать отсутствующие категории
+                                </label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="group_by_supplier" id="groupBySupplier">
+                                <label class="form-check-label" for="groupBySupplier">
+                                    Группировать по поставщику
+                                </label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="group_by_date" id="groupByDate">
+                                <label class="form-check-label" for="groupByDate">
+                                    Группировать по дате
+                                </label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="create_documents" id="createDocuments" checked>
+                                <label class="form-check-label" for="createDocuments">
+                                    Создавать документы
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-warning w-100">
+                            <i class="fas fa-sync-alt"></i> Обновить предпросмотр
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-list"></i> Данные для импорта ({{ data|length }} строк)
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="sticky-top bg-light">
+                                <tr>
+                                    <th style="width: 40px;">
+                                        <input type="checkbox" id="selectAll" checked>
+                                    </th>
+                                    <th>№</th>
+                                    <th>Наименование</th>
+                                    <th>Тип</th>
+                                    <th>Кол-во</th>
+                                    <th>Склад</th>
+                                    <th>Поставщик</th>
+                                    <th>Статус</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in data %}
+                                <tr class="{% if not item.valid %}table-danger{% elif item.warnings %}table-warning{% endif %}">
+                                    <td>
+                                        <input type="checkbox" name="selected_rows" value="{{ loop.index0 }}" 
+                                               class="row-checkbox" {% if item.valid %}checked{% endif %}>
+                                    </td>
+                                    <td>{{ item.row_num }}</td>
+                                    <td>
+                                        {{ item.data.name }}
+                                        {% if item.data.manufacturer or item.data.model %}
+                                        <br><small class="text-muted">
+                                            {{ item.data.manufacturer or '' }} {{ item.data.model or '' }}
+                                        </small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.data.accounting_type == 'individual' %}
+                                            <span class="badge bg-primary">Индивид.</span>
+                                        {% elif item.data.accounting_type == 'batch' %}
+                                            <span class="badge bg-success">Партия</span>
+                                        {% else %}
+                                            <span class="badge bg-info">Кол.</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ item.data.quantity }} {{ item.data.unit }}</td>
+                                    <td>{{ item.data.warehouse }}</td>
+                                    <td>{{ item.data.supplier_name or '—' }}</td>
+                                    <td>
+                                        {% if item.errors %}
+                                            <span class="badge bg-danger" title="{{ item.errors|join(', ') }}">
+                                                <i class="fas fa-exclamation-circle"></i> Ошибка
+                                            </span>
+                                        {% elif item.warnings %}
+                                            <span class="badge bg-warning text-dark" title="{{ item.warnings|join(', ') }}">
+                                                <i class="fas fa-exclamation-triangle"></i> Предупреждение
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check"></i> OK
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <form method="POST" action="{{ url_for('import_export.import_execute', session_id=session_id) }}" id="importForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-play"></i> Выполнить импорт выбранных
+                        </button>
+                        <span class="text-muted ms-2">
+                            Выбрано: <span id="selectedCount">{{ statistics.valid_rows }}</span> строк
+                        </span>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // Выделение всех строк
+    $('#selectAll').change(function() {
+        $('.row-checkbox').prop('checked', $(this).prop('checked'));
+        updateSelectedCount();
+    });
+    
+    // Обновление счетчика при изменении выбора
+    $('.row-checkbox').change(updateSelectedCount);
+    
+    function updateSelectedCount() {
+        var count = $('.row-checkbox:checked').length;
+        $('#selectedCount').text(count);
+    }
+    
+    // Подтверждение импорта
+    $('#importForm').on('submit', function(e) {
+        var selected = $('.row-checkbox:checked').length;
+        if (selected === 0) {
+            e.preventDefault();
+            showToast('Выберите хотя бы одну строку для импорта', 'warning');
+        } else {
+            return confirm('Начать импорт ' + selected + ' строк?');
+        }
+    });
+    
+    // Обновление формы при изменении опций
+    $('#optionsForm').on('submit', function() {
+        $(this).find('button[type="submit"]').prop('disabled', true)
+               .html('<i class="fas fa-spinner fa-spin"></i> Обновление...');
+    });
+});
+</script>
+{% endblock %}

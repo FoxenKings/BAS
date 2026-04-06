@@ -1,0 +1,399 @@
+{% extends "base.html" %}
+{% from 'macros/pagination.html' import render_pagination %}
+
+{% block title %}Номенклатура{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="px-3 pt-2">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home"></i> Главная</a></li>
+        <li class="breadcrumb-item active">Номенклатура</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-cubes"></i> Номенклатура
+        </h1>
+        <div>
+            <a href="{{ url_for('nomenclatures.add_nomenclature') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Новая позиция
+            </a>
+            <a href="{{ url_for('import_export.import_universal') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-file-import"></i> Импорт
+            </a>
+        </div>
+    </div>
+    
+    <!-- Вкладки по типам учета -->
+    <ul class="nav nav-tabs mb-4" id="nomenclatureTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <a class="nav-link {% if active_tab == 'all' %}active{% endif %}" 
+               href="{{ url_for('nomenclatures.nomenclatures_list') }}">
+                <i class="fas fa-list"></i> Все ({{ counts.all }})
+            </a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link {% if active_tab == 'individual' %}active{% endif %}" 
+               href="{{ url_for('nomenclatures.nomenclatures_list', accounting_type='individual') }}">
+                <i class="fas fa-cube text-primary"></i> Индивидуальные ({{ counts.individual }})
+            </a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link {% if active_tab == 'batch' %}active{% endif %}" 
+               href="{{ url_for('nomenclatures.nomenclatures_list', accounting_type='batch') }}">
+                <i class="fas fa-layer-group text-success"></i> Партионные ({{ counts.batch }})
+            </a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link {% if active_tab == 'quantitative' %}active{% endif %}" 
+               href="{{ url_for('nomenclatures.nomenclatures_list', accounting_type='quantitative') }}">
+                <i class="fas fa-boxes text-warning"></i> Количественные ({{ counts.quantitative }})
+            </a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link {% if active_tab == 'kit' %}active{% endif %}" 
+               href="{{ url_for('nomenclatures.nomenclatures_list', accounting_type='kit') }}">
+                <i class="fas fa-puzzle-piece text-info"></i> Комплекты ({{ counts.kit }})
+            </a>
+        </li>
+    </ul>
+    
+    <!-- Поиск и фильтры -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" name="search" 
+                               value="{{ search or '' }}" placeholder="Поиск по названию, артикулу...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="category">
+                        <option value="">Все категории</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if category_id|int == cat.id %}selected{% endif %}>
+                            {{ '-' * cat.depth }} {{ cat.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter"></i> Применить
+                    </button>
+                </div>
+                <div class="col-md-3 text-end">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-outline-secondary" onclick="toggleView('table')">
+                            <i class="fas fa-table"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="toggleView('cards')">
+                            <i class="fas fa-th-large"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Таблица номенклатуры -->
+    <div class="card table-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-list"></i> Позиции каталога</span>
+            <span class="text-muted text-sm">
+                Найдено: <strong>{{ pagination.total }}</strong>
+                {% if pagination.pages > 1 %} · стр. {{ pagination.page }}/{{ pagination.pages }}{% endif %}
+            </span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="nomenclatureTable">
+                    <thead>
+                        <tr>
+                            <th class="col-img"></th>
+                            <th style="width:44px;">Тип</th>
+                            <th>Артикул</th>
+                            <th>Наименование</th>
+                            <th class="d-mobile-none">Категория</th>
+                            <th>Тип учёта</th>
+                            <th class="d-mobile-none">Остаток</th>
+                            <th>Статус</th>
+                            <th class="col-actions">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in nomenclatures %}
+                        <tr>
+                            <td class="col-img">
+                                <img src="/api/nomenclatures/{{ item.id }}/thumbnail"
+                                     class="nomenclature-img"
+                                     alt="{{ item.name }}"
+                                     loading="lazy">
+                            </td>
+                            <td>
+                                {% if item.accounting_type == 'individual' %}
+                                    <span class="badge badge-individual" title="Индивидуальный учёт"><i class="fas fa-cube"></i></span>
+                                {% elif item.accounting_type == 'batch' %}
+                                    <span class="badge badge-batch" title="Партионный учёт"><i class="fas fa-layer-group"></i></span>
+                                {% elif item.accounting_type == 'quantitative' %}
+                                    <span class="badge badge-quantitative" title="Количественный учёт"><i class="fas fa-boxes"></i></span>
+                                {% elif item.accounting_type == 'kit' %}
+                                    <span class="badge badge-kit" title="Комплект"><i class="fas fa-puzzle-piece"></i></span>
+                                {% else %}
+                                    <span class="badge badge-inactive"><i class="fas fa-question"></i></span>
+                                {% endif %}
+                            </td>
+                            <td><span class="text-code">{{ item.sku }}</span></td>
+                            <td>
+                                <a href="{{ url_for('nomenclatures.view_nomenclature', id=item.id) }}" class="fw-semibold text-decoration-none">
+                                    {{ item.name }}
+                                </a>
+                                {% if item.model %}
+                                <div class="text-muted text-xs">{{ item.model }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="d-mobile-none text-muted text-sm">
+                                {{ item.category_name or '—' }}
+                            </td>
+                            <td>
+                                {% if item.accounting_type == 'individual' %}
+                                    <span class="badge badge-individual">Индивид.</span>
+                                {% elif item.accounting_type == 'batch' %}
+                                    <span class="badge badge-batch">Партионный</span>
+                                {% elif item.accounting_type == 'quantitative' %}
+                                    <span class="badge badge-quantitative">Кол-ный</span>
+                                {% elif item.accounting_type == 'kit' %}
+                                    <span class="badge badge-kit">Комплект</span>
+                                {% endif %}
+                            </td>
+                            <td class="d-mobile-none">
+                                {% if item.accounting_type == 'individual' %}
+                                    <a href="{{ url_for('instances.instances_list') }}?nomenclature_id={{ item.id }}" class="text-decoration-none text-sm">
+                                        {{ item.instances_count or 0 }} экз.
+                                    </a>
+                                {% elif item.accounting_type == 'batch' %}
+                                    <a href="{{ url_for('warehouses.batches_list') }}?nomenclature_id={{ item.id }}" class="text-decoration-none text-sm">
+                                        {{ item.batches_count or 0 }} партий
+                                    </a>
+                                {% elif item.accounting_type == 'quantitative' %}
+                                    <span class="text-sm {% if item.min_stock and item.total_stock <= item.min_stock %}text-danger fw-semibold{% endif %}">
+                                        {{ item.total_stock or 0 }} {{ item.unit or 'шт.' }}
+                                        {% if item.min_stock and item.total_stock <= item.min_stock %}
+                                        <i class="fas fa-exclamation-triangle text-warning ms-1" title="Ниже минимума"></i>
+                                        {% endif %}
+                                    </span>
+                                {% elif item.accounting_type == 'kit' %}
+                                    <span class="text-sm text-muted">{{ item.components_count or 0 }} компон.</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge {{ 'badge-active' if item.is_active else 'badge-inactive' }}">
+                                    {{ 'Активен' if item.is_active else 'Неактивен' }}
+                                </span>
+                            </td>
+                            <td class="col-actions">
+                                <div class="btn-group">
+                                    <a href="{{ url_for('nomenclatures.edit_nomenclature', id=item.id) }}" class="btn btn-action btn-outline-primary" title="Редактировать">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{{ url_for('nomenclatures.view_nomenclature', id=item.id) }}" class="btn btn-action btn-outline-info" title="Просмотр">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-action btn-outline-danger" onclick="deleteNomenclature({{ item.id }})" title="Удалить">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="9">
+                                <div class="empty-state">
+                                    <i class="fas fa-box-open empty-icon"></i>
+                                    <h5>Номенклатура не найдена</h5>
+                                    <p>
+                                        {% if search or category_id or active_tab != 'all' %}
+                                        По заданным фильтрам ничего не найдено. Попробуйте изменить параметры поиска.
+                                        {% else %}
+                                        Каталог пуст. Создайте первую позицию номенклатуры.
+                                        {% endif %}
+                                    </p>
+                                    <a href="{{ url_for('nomenclatures.add_nomenclature') }}" class="btn btn-primary">
+                                        <i class="fas fa-plus me-1"></i> Создать позицию
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-3 pb-2">
+            {{ render_pagination(pagination, 'nomenclatures_list',
+                search=search,
+                category=category_id or '',
+                accounting_type=active_tab if active_tab != 'all' else '') }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Улучшенная функция удаления с обработкой ошибок
+function deleteNomenclature(id) {
+    Swal.fire({
+        title: 'Подтверждение удаления',
+        text: 'Вы уверены, что хотите удалить эту позицию?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Да, удалить',
+        cancelButtonText: 'Отмена'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Показываем индикатор загрузки
+            Swal.fire({
+                title: 'Удаление...',
+                text: 'Пожалуйста, подождите',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            fetch(`/nomenclatures/${id}/delete`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (response.redirected) {
+                    // Если был редирект (успешное удаление)
+                    window.location.href = response.url;
+                } else if (response.ok) {
+                    // Если успешно, но нет редиректа
+                    return response.json().then(data => {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Успешно',
+                            text: data.message || 'Позиция удалена',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            location.reload();
+                        });
+                    }).catch(() => {
+                        // Если не JSON, просто перезагружаем
+                        location.reload();
+                    });
+                } else {
+                    // Если ошибка
+                    return response.text().then(text => {
+                        throw new Error(text || 'Ошибка при удалении');
+                    });
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Ошибка',
+                    text: error.message
+                });
+            });
+        }
+    });
+}
+
+// Функция для переключения вида
+function toggleView(view) {
+    localStorage.setItem('nomenclatureView', view);
+    if (view === 'cards') {
+        // Здесь можно добавить переключение на карточки
+        console.log('Переключение на карточки');
+    } else {
+        // Здесь можно добавить переключение на таблицу
+        console.log('Переключение на таблицу');
+    }
+}
+
+// Инициализация при загрузке страницы
+$(document).ready(function() {
+    // Инициализация DataTables
+    if ($.fn.DataTable && $('#nomenclatureTable').length) {
+        $('#nomenclatureTable').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/ru.json'
+            },
+            order: [[1, 'asc']],
+            pageLength: 25,
+            columnDefs: [
+                { orderable: false, targets: [7] } // Колонка с действиями
+            ]
+        });
+    }
+    
+    // Восстановление предыдущего вида
+    const savedView = localStorage.getItem('nomenclatureView');
+    if (savedView) {
+        toggleView(savedView);
+    }
+});
+</script>
+
+<style>
+/* Стили для таблицы */
+.table td {
+    vertical-align: middle;
+}
+
+.badge i {
+    margin-right: 3px;
+}
+
+.btn-group .btn {
+    padding: 0.25rem 0.5rem;
+}
+
+/* Анимация для предупреждений */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.text-warning i {
+    animation: pulse 2s infinite;
+}
+
+/* Стили для карточек (если используется) */
+.nomenclature-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    height: 100%;
+}
+
+.nomenclature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.nomenclature-card .card-header {
+    background-color: #f8f9fa;
+    font-weight: 500;
+}
+
+.nomenclature-card .type-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+</style>
+{% endblock %}

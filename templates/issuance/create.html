@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}Выдача материалов и инструментов{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  <!-- Заголовок -->
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h4 class="mb-0"><i class="fas fa-hand-holding-box me-2 text-warning"></i>Оформление выдачи</h4>
+      <nav aria-label="breadcrumb" class="mt-1">
+        <ol class="breadcrumb mb-0 small">
+          <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Главная</a></li>
+          <li class="breadcrumb-item"><a href="{{ url_for('documents.documents_list') }}">Документы</a></li>
+          <li class="breadcrumb-item active">Новая выдача</li>
+        </ol>
+      </nav>
+    </div>
+    <a href="{{ url_for('documents.documents_list') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Назад
+    </a>
+  </div>
+
+  <form method="POST" id="issuanceForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="row">
+
+      <!-- Левая колонка: шапка документа -->
+      <div class="col-lg-4">
+        <div class="card mb-3">
+          <div class="card-header"><i class="fas fa-info-circle me-1"></i>Реквизиты</div>
+          <div class="card-body">
+
+            <!-- Сотрудник -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Получатель <span class="text-danger">*</span></label>
+              <select name="employee_id" class="form-select" required>
+                <option value="">— выберите сотрудника —</option>
+                {% for emp in employees %}
+                <option value="{{ emp.id }}">
+                  {{ emp.full_name }}{% if emp.position %} · {{ emp.position }}{% endif %}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Склад -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Склад выдачи</label>
+              <select name="from_warehouse" class="form-select">
+                <option value="">— выберите склад —</option>
+                {% for wh in warehouses %}
+                <option value="{{ wh.name }}">{{ wh.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Цель -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Цель расходования</label>
+              <input type="text" name="purpose" class="form-control" placeholder="Для производственных нужд…">
+            </div>
+
+            <!-- Основание -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Основание</label>
+              <textarea name="reason" class="form-control" rows="2" placeholder="Заявка, заказ-наряд…"></textarea>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Правая колонка: позиции -->
+      <div class="col-lg-8">
+        <div class="card mb-3">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <span><i class="fas fa-list me-1"></i>Позиции выдачи</span>
+          </div>
+          <div class="card-body p-0">
+
+            <!-- Вкладки типов учёта -->
+            <ul class="nav nav-tabs px-3 pt-2" id="itemTypeTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-qty-btn" data-bs-toggle="tab"
+                        data-bs-target="#tab-qty" type="button" role="tab">
+                  <i class="fas fa-cubes me-1"></i>Количественный учёт
+                  {% if quantitative_items %}<span class="badge bg-secondary ms-1">{{ quantitative_items|length }}</span>{% endif %}
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-batch-btn" data-bs-toggle="tab"
+                        data-bs-target="#tab-batch" type="button" role="tab">
+                  <i class="fas fa-layer-group me-1"></i>Партионный учёт
+                  {% if batch_items %}<span class="badge bg-secondary ms-1">{{ batch_items|length }}</span>{% endif %}
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-ind-btn" data-bs-toggle="tab"
+                        data-bs-target="#tab-ind" type="button" role="tab">
+                  <i class="fas fa-barcode me-1"></i>Индивидуальный учёт
+                  {% if tools_list %}<span class="badge bg-secondary ms-1">{{ tools_list|length }}</span>{% endif %}
+                </button>
+              </li>
+            </ul>
+
+            <div class="tab-content p-3" id="itemTypeTabsContent">
+
+              <!-- ── Количественный учёт ── -->
+              <div class="tab-pane fade show active" id="tab-qty" role="tabpanel">
+                {% if quantitative_items %}
+                <div class="table-responsive">
+                  <table class="table table-sm table-hover align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th style="width:32px"></th>
+                        <th>Номенклатура</th>
+                        <th class="text-end">На складе</th>
+                        <th style="width:110px">Кол-во</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for item in quantitative_items %}
+                      <tr>
+                        <td>
+                          <input class="form-check-input qty-check" type="checkbox"
+                                 data-id="{{ item.id }}" data-unit="{{ item.unit }}">
+                        </td>
+                        <td>
+                          <div class="fw-semibold">{{ item.name }}</div>
+                          <small class="text-muted">{{ item.sku }}{% if item.category_name %} · {{ item.category_name }}{% endif %}</small>
+                        </td>
+                        <td class="text-end">
+                          <span class="badge {% if item.stock_quantity > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                            {{ item.stock_quantity }} {{ item.unit }}
+                          </span>
+                        </td>
+                        <td>
+                          <input type="number" class="form-control form-control-sm qty-input d-none"
+                                 id="qty-{{ item.id }}" min="0.001" max="{{ item.stock_quantity }}"
+                                 step="any" value="1" placeholder="кол-во">
+                        </td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+                {% else %}
+                <div class="text-muted text-center py-4">
+                  <i class="fas fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+                  Нет товаров с количественным учётом на складе
+                </div>
+                {% endif %}
+              </div>
+
+              <!-- ── Партионный учёт ── -->
+              <div class="tab-pane fade" id="tab-batch" role="tabpanel">
+                {% if batch_items %}
+                <div class="table-responsive">
+                  <table class="table table-sm table-hover align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th style="width:32px"></th>
+                        <th>Номенклатура / Партия</th>
+                        <th>Срок годности</th>
+                        <th class="text-end">Остаток</th>
+                        <th style="width:110px">Кол-во</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for item in batch_items %}
+                      <tr>
+                        <td>
+                          <input class="form-check-input batch-check" type="checkbox"
+                                 data-id="{{ item.id }}" data-batch="{{ item.batch_number }}"
+                                 data-unit="{{ item.unit }}">
+                        </td>
+                        <td>
+                          <div class="fw-semibold">{{ item.name }}</div>
+                          <small class="text-muted">Партия: <strong>{{ item.batch_number }}</strong></small>
+                        </td>
+                        <td>
+                          {% if item.expiry_date %}
+                            <span class="small text-{% if item.expiry_date < now().strftime('%Y-%m-%d') %}danger{% else %}muted{% endif %}">
+                              {{ item.expiry_date }}
+                            </span>
+                          {% else %}<span class="text-muted">—</span>{% endif %}
+                        </td>
+                        <td class="text-end">
+                          <span class="badge {% if item.stock_quantity > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                            {{ item.stock_quantity }} {{ item.unit }}
+                          </span>
+                        </td>
+                        <td>
+                          <input type="number" class="form-control form-control-sm batch-input d-none"
+                                 id="bqty-{{ item.id }}-{{ item.batch_number }}"
+                                 min="0.001" max="{{ item.stock_quantity }}" step="any" value="1">
+                        </td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+                {% else %}
+                <div class="text-muted text-center py-4">
+                  <i class="fas fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+                  Нет партий с остатком на складе
+                </div>
+                {% endif %}
+              </div>
+
+              <!-- ── Индивидуальный учёт ── -->
+              <div class="tab-pane fade" id="tab-ind" role="tabpanel">
+                {% if tools_list %}
+                  {% for nomen in tools_list %}
+                  <div class="mb-3">
+                    <div class="fw-semibold text-secondary small text-uppercase mb-1 ps-1">
+                      {{ nomen.name }} <span class="text-muted">({{ nomen.sku }})</span>
+                    </div>
+                    {% for inst in nomen.instances %}
+                    <div class="d-flex align-items-center gap-2 ps-2 py-1 border-start border-2">
+                      <input class="form-check-input ind-check" type="checkbox"
+                             data-id="{{ nomen.id }}" data-instance="{{ inst.id }}"
+                             data-inv="{{ inst.inventory_number }}">
+                      <span class="small">
+                        <strong>{{ inst.inventory_number }}</strong>
+                        {% if inst.serial_number %}<span class="text-muted"> / SN: {{ inst.serial_number }}</span>{% endif %}
+                        {% if inst.warehouse_name %}<span class="text-muted"> · {{ inst.warehouse_name }}</span>{% endif %}
+                      </span>
+                    </div>
+                    {% endfor %}
+                  </div>
+                  {% endfor %}
+                {% else %}
+                <div class="text-muted text-center py-4">
+                  <i class="fas fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+                  Нет инструментов/оборудования со статусом «На складе»
+                </div>
+                {% endif %}
+              </div>
+
+            </div><!-- /tab-content -->
+          </div><!-- /card-body -->
+        </div><!-- /card -->
+
+        <!-- Скрытые поля, заполняются JS перед отправкой -->
+        <div id="hiddenFields"></div>
+
+        <!-- Итог -->
+        <div id="issuanceSummary" class="alert alert-info d-none mb-3">
+          Выбрано позиций: <span id="selectedCount">0</span>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-end">
+          <a href="{{ url_for('documents.documents_list') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-times me-1"></i>Отмена
+          </a>
+          <button type="submit" class="btn btn-warning" id="submitBtn">
+            <i class="fas fa-paper-plane me-1"></i>Оформить выдачу
+          </button>
+        </div>
+
+      </div><!-- /col -->
+    </div><!-- /row -->
+  </form>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  "use strict";
+
+  const hiddenFields = document.getElementById('hiddenFields');
+  const selectedCount = document.getElementById('selectedCount');
+  const summary = document.getElementById('issuanceSummary');
+
+  function updateCount() {
+    const total =
+      document.querySelectorAll('.qty-check:checked').length +
+      document.querySelectorAll('.batch-check:checked').length +
+      document.querySelectorAll('.ind-check:checked').length;
+    selectedCount.textContent = total;
+    summary.classList.toggle('d-none', total === 0);
+  }
+
+  // Показ/скрытие поля количества при выборе
+  document.querySelectorAll('.qty-check').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      const inp = document.getElementById('qty-' + cb.dataset.id);
+      if (inp) inp.classList.toggle('d-none', !cb.checked);
+      updateCount();
+    });
+  });
+
+  document.querySelectorAll('.batch-check').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      const inp = document.getElementById('bqty-' + cb.dataset.id + '-' + cb.dataset.batch);
+      if (inp) inp.classList.toggle('d-none', !cb.checked);
+      updateCount();
+    });
+  });
+
+  document.querySelectorAll('.ind-check').forEach(function(cb) {
+    cb.addEventListener('change', updateCount);
+  });
+
+  // Перед отправкой — формируем скрытые поля
+  document.getElementById('issuanceForm').addEventListener('submit', function() {
+    hiddenFields.innerHTML = '';
+
+    function addHidden(name, value) {
+      const inp = document.createElement('input');
+      inp.type = 'hidden';
+      inp.name = name;
+      inp.value = value;
+      hiddenFields.appendChild(inp);
+    }
+
+    // Количественные
+    document.querySelectorAll('.qty-check:checked').forEach(function(cb) {
+      const qtyInp = document.getElementById('qty-' + cb.dataset.id);
+      const qty = qtyInp ? qtyInp.value : '1';
+      addHidden('nomenclature_id[]', cb.dataset.id);
+      addHidden('quantity[]', qty);
+      addHidden('unit[]', cb.dataset.unit || 'шт.');
+      addHidden('accounting_type[]', 'quantitative');
+      addHidden('batch_number[]', '');
+      addHidden('expiry_date[]', '');
+      addHidden('instance_id[]', '');
+      addHidden('inventory_number[]', '');
+    });
+
+    // Партионные
+    document.querySelectorAll('.batch-check:checked').forEach(function(cb) {
+      const inp = document.getElementById('bqty-' + cb.dataset.id + '-' + cb.dataset.batch);
+      const qty = inp ? inp.value : '1';
+      addHidden('nomenclature_id[]', cb.dataset.id);
+      addHidden('quantity[]', qty);
+      addHidden('unit[]', cb.dataset.unit || 'шт.');
+      addHidden('accounting_type[]', 'batch');
+      addHidden('batch_number[]', cb.dataset.batch);
+      addHidden('expiry_date[]', '');
+      addHidden('instance_id[]', '');
+      addHidden('inventory_number[]', '');
+    });
+
+    // Индивидуальные
+    document.querySelectorAll('.ind-check:checked').forEach(function(cb) {
+      addHidden('nomenclature_id[]', cb.dataset.id);
+      addHidden('quantity[]', '1');
+      addHidden('unit[]', 'шт.');
+      addHidden('accounting_type[]', 'individual');
+      addHidden('batch_number[]', '');
+      addHidden('expiry_date[]', '');
+      addHidden('instance_id[]', cb.dataset.instance);
+      addHidden('inventory_number[]', cb.dataset.inv);
+    });
+  });
+})();
+</script>
+{% endblock %}

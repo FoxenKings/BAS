@@ -1,0 +1,583 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_translation('documents', 'view_title', number=document.document_number) }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-file-alt"></i> {{ get_translation('documents', 'view_title', number=document.document_number) }}
+        </h1>
+        <div>
+            {% if document.status == 'draft' %}
+            <a href="{{ url_for('documents.edit_document', id=document.id) }}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> {{ get_translation('common', 'edit') }}
+            </a>
+            <button type="button" class="btn btn-success" onclick="postDocument({{ document.id }})">
+                <i class="fas fa-check"></i> {{ get_translation('documents', 'post') }}
+            </button>
+            {% endif %}
+            {% if document.document_type == 'issuance' %}
+                {# Определяем типы учёта в позициях #}
+                {% set has_individual = items | selectattr('accounting_type', 'equalto', 'individual') | list | length > 0 %}
+                {% set has_bulk = items | selectattr('accounting_type', 'in', ['quantitative', 'batch']) | list | length > 0 %}
+                {# Если нет позиций — показываем оба #}
+                {% set show_act = has_individual or (not has_individual and not has_bulk) %}
+                {% set show_demand = has_bulk or (not has_individual and not has_bulk) %}
+
+                {% if show_act %}
+                <a href="{{ url_for('documents.print_issuance_act', id=document.id) }}" class="btn btn-outline-primary" target="_blank">
+                    <i class="fas fa-file-signature"></i> Акт выдачи
+                </a>
+                {% endif %}
+                {% if show_demand %}
+                <a href="{{ url_for('documents.print_demand_invoice', id=document.id) }}" class="btn btn-outline-secondary" target="_blank">
+                    <i class="fas fa-file-alt"></i> Требование-накладная
+                </a>
+                {% endif %}
+                <a href="{{ url_for('documents.print_delivery_receipt', id=document.id) }}" class="btn btn-outline-info" target="_blank">
+                    <i class="fas fa-truck"></i> Квитанция
+                </a>
+            {% endif %}
+            <a href="{{ url_for('documents.documents_list') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> {{ get_translation('common', 'back') }}
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-info-circle"></i> {{ get_translation('documents', 'basic_info') }}
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 30%;">{{ get_translation('documents', 'document_number') }}:</th>
+                            <td><code>{{ document.document_number }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('common', 'date') }}:</th>
+                            <td>{{ format_date(document.document_date) }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('documents', 'document_type') }}:</th>
+                            <td>
+                                <span class="badge bg-{{ get_document_type_color(document.document_type) }}">
+                                    {{ get_document_type_text(document.document_type) }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('common', 'status') }}:</th>
+                            <td>
+                                <span class="badge bg-{{ get_status_color(document.status) }}">
+                                    {{ get_status_text(document.status) }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('common', 'created_by') }}:</th>
+                            <td>{{ document.created_by_name }} ({{ format_datetime(document.created_at) }})</td>
+                        </tr>
+                        {% if document.posted_at %}
+                        <tr>
+                            <th>{{ get_translation('documents', 'posted_by') }}:</th>
+                            <td>{{ document.posted_by_name }} ({{ format_datetime(document.posted_at) }})</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-map-marker-alt"></i> {{ get_translation('documents', 'movement_info') }}
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        {% if document.supplier_name %}
+                        <tr>
+                            <th style="width: 30%;">{{ get_translation('suppliers', 'title') }}:</th>
+                            <td><a href="{{ url_for('suppliers.supplier_details', id=document.supplier_id) }}">{{ document.supplier_name }}</a></td>
+                        </tr>
+                        {% endif %}
+                        
+                        <!-- ========== ЦЕЛЬ ВЫДАЧИ ========== -->
+                        {% if document.issuance_type or document.employee_name or document.purpose_id or document.department_name %}
+                        <tr class="table-primary">
+                            <th colspan="2" class="text-center">
+                                <i class="fas fa-bullseye"></i> <strong>ЦЕЛЬ ВЫДАЧИ</strong>
+                            </th>
+                        </tr>
+                        {% endif %}
+
+                        <!-- Тип выдачи -->
+                        {% if document.issuance_type %}
+                        <tr>
+                            <th style="width: 30%;">Тип выдачи:</th>
+                            <td>
+                                {% if document.issuance_type == 'employee' %}
+                                    <span class="badge bg-info"><i class="fas fa-user"></i> Сотруднику (в личное пользование)</span>
+                                {% elif document.issuance_type == 'department' %}
+                                    <span class="badge bg-primary"><i class="fas fa-building"></i> В подразделение (начальнику участка)</span>
+                                {% elif document.issuance_type == 'production' %}
+                                    <span class="badge bg-success"><i class="fas fa-industry"></i> На производство (расход)</span>
+                                {% elif document.issuance_type == 'own_needs' %}
+                                    <span class="badge bg-warning"><i class="fas fa-tools"></i> На собственные нужды</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ document.issuance_type }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+
+                        <!-- Получатель (сотрудник) -->
+                        {% if document.employee_name %}
+                        <tr>
+                            <th>Получатель:</th>
+                            <td>
+                                <a href="{{ url_for('employees.view_employee', id=document.employee_id) }}" class="text-decoration-none">
+                                    <i class="fas fa-user-circle"></i> <strong>{{ document.employee_name }}</strong>
+                                </a>
+                                {% if document.employee_position %}
+                                    <br><small class="text-muted"><i class="fas fa-briefcase"></i> Должность: {{ document.employee_position }}</small>
+                                {% endif %}
+                                {% if document.employee_department %}
+                                    <br><small class="text-muted"><i class="fas fa-building"></i> Отдел: {{ document.employee_department }}</small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+
+                        <!-- Подразделение (для типа department) -->
+                        {% if document.department_name %}
+                        <tr>
+                            <th>Подразделение:</th>
+                            <td>
+                                <a href="{{ url_for('employees.department_detail', id=document.department_id) }}" class="text-decoration-none">
+                                    <i class="fas fa-building"></i> {{ document.department_name }}
+                                </a>
+                                {% if document.department_manager %}
+                                    <br><small class="text-muted"><i class="fas fa-user-tie"></i> Руководитель: {{ document.department_manager }}</small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+
+                        <!-- ===== ЦЕЛЬ РАСХОДОВАНИЯ (ИЗ СПРАВОЧНИКА) ===== -->
+                        {% if document.purpose_id %}
+                        <tr>
+                            <th>Цель расходования:</th>
+                            <td>
+                                <!-- Основной бейдж с названием цели -->
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="badge bg-{{ get_purpose_color(document.purpose_category) }}" style="font-size: 1.1rem; padding: 0.5rem 1rem;">
+                                        <i class="fas fa-bullseye"></i> 
+                                        <strong>{{ document.purpose_name or 'Не указана' }}</strong>
+                                    </span>
+                                </div>
+                                
+                                <!-- Детальная информация -->
+                                <div class="p-3 bg-light rounded">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-2">
+                                                <i class="fas fa-code text-muted"></i> <strong>Код:</strong> 
+                                                <code>{{ document.purpose_code }}</code>
+                                            </div>
+                                            <div class="mb-2">
+                                                <i class="fas fa-tag text-muted"></i> <strong>Категория:</strong>
+                                                {% if document.purpose_category == 'production' %}
+                                                    <span class="badge bg-success">Производство</span>
+                                                {% elif document.purpose_category == 'development' %}
+                                                    <span class="badge bg-primary">Разработка и НИОКР</span>
+                                                {% elif document.purpose_category == 'maintenance' %}
+                                                    <span class="badge bg-warning">Ремонт и обслуживание</span>
+                                                {% elif document.purpose_category == 'own_needs' %}
+                                                    <span class="badge bg-info">Собственные нужды</span>
+                                                {% elif document.purpose_category == 'other' %}
+                                                    <span class="badge bg-secondary">Прочее</span>
+                                                {% else %}
+                                                    {{ document.purpose_category }}
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-2">
+                                                <i class="fas fa-sort-numeric-up text-muted"></i> <strong>Сортировка:</strong>
+                                                {{ document.purpose_sort_order or 0 }}
+                                            </div>
+                                            <div class="mb-2">
+                                                <i class="fas fa-check-circle text-muted"></i> <strong>Статус:</strong>
+                                                {% if document.purpose_is_active %}
+                                                    <span class="badge bg-success">Активна</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Неактивна</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if document.purpose_description %}
+                                    <div class="mt-2 p-2 bg-white rounded">
+                                        <i class="fas fa-info-circle text-primary"></i> 
+                                        <strong>Описание:</strong> {{ document.purpose_description }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Комментарий к цели (из документа) -->
+                                {% if document.purpose_comment %}
+                                <div class="mt-2 alert alert-info py-2">
+                                    <i class="fas fa-comment"></i> <strong>Комментарий:</strong>
+                                    <em>{{ document.purpose_comment }}</em>
+                                </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+
+                        <!-- Центр затрат -->
+                        {% if document.cost_center_id %}
+                        <tr>
+                            <th>Центр затрат:</th>
+                            <td>
+                                {% if document.cost_center_id == 'production_materials' %}
+                                    <span class="badge bg-success"><i class="fas fa-industry"></i> Основное производство (материалы)</span>
+                                {% elif document.cost_center_id == 'auxiliary_materials' %}
+                                    <span class="badge bg-info"><i class="fas fa-tools"></i> Вспомогательные материалы</span>
+                                {% elif document.cost_center_id == 'repair' %}
+                                    <span class="badge bg-warning"><i class="fas fa-wrench"></i> Ремонт и обслуживание</span>
+                                {% elif document.cost_center_id == 'operating_expenses' %}
+                                    <span class="badge bg-secondary"><i class="fas fa-chart-line"></i> Эксплуатационные расходы</span>
+                                {% elif document.cost_center_id == 'administration' %}
+                                    <span class="badge bg-primary"><i class="fas fa-users"></i> Административные нужды</span>
+                                {% elif document.cost_center_id == 'rnd' %}
+                                    <span class="badge bg-purple"><i class="fas fa-flask"></i> НИОКР и эксперименты</span>
+                                {% else %}
+                                    {{ document.cost_center_id }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                        
+                        <!-- Информация о складах -->
+                        {% if document.from_warehouse_name %}
+                        <tr>
+                            <th>{{ get_translation('documents', 'from_warehouse') }}:</th>
+                            <td><a href="{{ url_for('warehouses.warehouse_stocks', id=document.from_warehouse_id) }}">{{ document.from_warehouse_name }}</a></td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if document.to_warehouse_name %}
+                        <tr>
+                            <th>{{ get_translation('documents', 'to_warehouse') }}:</th>
+                            <td><a href="{{ url_for('warehouses.warehouse_stocks', id=document.to_warehouse_id) }}">{{ document.to_warehouse_name }}</a></td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if document.from_location_name %}
+                        <tr>
+                            <th>{{ get_translation('documents', 'from_location') }}:</th>
+                            <td><a href="{{ url_for('employees.location_detail', id=document.from_location_id) }}">{{ document.from_location_name }}</a></td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if document.to_location_name %}
+                        <tr>
+                            <th>{{ get_translation('documents', 'to_location') }}:</th>
+                            <td><a href="{{ url_for('employees.location_detail', id=document.to_location_id) }}">{{ document.to_location_name }}</a></td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if document.reason %}
+                        <tr>
+                            <th>{{ get_translation('documents', 'reason') }}:</th>
+                            <td>{{ document.reason }}</td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if document.notes %}
+                        <tr>
+                            <th>{{ get_translation('documents', 'notes') }}:</th>
+                            <td>{{ document.notes }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-list"></i> {{ get_translation('documents', 'items') }}</span>
+                    <span class="badge bg-primary">{{ items|length }} позиций</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>№</th>
+                                    <th>Наименование</th>
+                                    <th>Артикул</th>
+                                    <th>Модификация</th>
+                                    <th class="text-end">Количество</th>
+                                    <th class="text-end">Цена, ₽</th>
+                                    <th class="text-end">Сумма, ₽</th>
+                                    <th>Партии</th>
+                                    <th>Экземпляры</th>
+                                    <th>Цель</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in items %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <a href="{{ url_for('nomenclatures.edit_nomenclature', id=item.nomenclature_id) }}">
+                                            {{ item.nomenclature_name }}
+                                        </a>
+                                    </td>
+                                    <td><code>{{ item.sku }}</code></td>
+                                    
+                                    <!-- ИСПРАВЛЕННАЯ КОЛОНКА МОДИФИКАЦИИ -->
+                                    <td>
+                                        {% if item.variation_id %}
+                                            <div class="variation-info">
+                                                {% if item.size %}
+                                                    <span class="badge bg-info">р-р {{ item.size }}</span>
+                                                {% endif %}
+                                                {% if item.color %}
+                                                    <span class="badge bg-secondary">{{ item.color }}</span>
+                                                {% endif %}
+                                                {% if item.variation_sku %}
+                                                    <br><small class="text-muted"><code>{{ item.variation_sku }}</code></small>
+                                                {% endif %}
+                                                {# Если есть variation_id, но нет данных размера/цвета, показываем ID #}
+                                                {% if not item.size and not item.color %}
+                                                    <span class="badge bg-warning">ID: {{ item.variation_id }}</span>
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <td class="text-end"><strong>{{ format_number(item.quantity) }}</strong></td>
+                                    <td class="text-end">{{ format_currency(item.price|float|default(0)) }}</td>
+                                    <td class="text-end">{{ format_currency((item.quantity * (item.price|float|default(0)))) }}</td>
+                                    <td>
+                                        {% if item.batch_number %}
+                                            <code>{{ item.batch_number }}</code>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.inventory_number %}
+                                            <code>{{ item.inventory_number }}</code>
+                                        {% elif item.serial_number %}
+                                            <code>{{ item.serial_number }}</code>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.purpose %}
+                                            {% if item.purpose == 'production' %}
+                                                <span class="badge bg-success" title="Производство">
+                                                    <i class="fas fa-industry"></i> Производство
+                                                </span>
+                                            {% elif item.purpose == 'repair' %}
+                                                <span class="badge bg-warning" title="Ремонт">
+                                                    <i class="fas fa-tools"></i> Ремонт
+                                                </span>
+                                            {% elif item.purpose == 'maintenance' %}
+                                                <span class="badge bg-info" title="Обслуживание">
+                                                    <i class="fas fa-wrench"></i> Обслуживание
+                                                </span>
+                                            {% elif item.purpose == 'experiment' %}
+                                                <span class="badge bg-primary" title="Эксперимент/НИОКР">
+                                                    <i class="fas fa-flask"></i> Эксперимент
+                                                </span>
+                                            {% elif item.purpose == 'other' %}
+                                                <span class="badge bg-secondary" title="Другое">
+                                                    <i class="fas fa-question"></i> Другое
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ item.purpose }}</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    {% set total_sum = namespace(value=0) %}
+                                    {% for item in items %}
+                                        {% set price = item.price|float|default(0) %}
+                                        {% set quantity = item.quantity|float|default(0) %}
+                                        {% set total_sum.value = total_sum.value + (price * quantity) %}
+                                    {% endfor %}
+                                    <th colspan="4" class="text-end">Итого:</th>
+                                    <th class="text-end" colspan="6">{{ format_currency(total_sum.value) }}</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Сводка по целям -->
+        {% if summary_by_purpose %}
+        <div class="col-12 mt-3">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-chart-pie"></i> Сводка по целям
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for purpose, total in summary_by_purpose.items() %}
+                        <div class="col-md-2 col-sm-4 mb-2">
+                            <div class="card bg-light h-100">
+                                <div class="card-body text-center">
+                                    <h6 class="mb-2">
+                                        {% if purpose == 'production' %}
+                                            <i class="fas fa-industry text-success"></i> Производство
+                                        {% elif purpose == 'repair' %}
+                                            <i class="fas fa-tools text-warning"></i> Ремонт
+                                        {% elif purpose == 'maintenance' %}
+                                            <i class="fas fa-wrench text-info"></i> Обслуживание
+                                        {% elif purpose == 'experiment' %}
+                                            <i class="fas fa-flask text-primary"></i> Эксперименты
+                                        {% elif purpose == 'other' %}
+                                            <i class="fas fa-question text-secondary"></i> Другое
+                                        {% else %}
+                                            {{ purpose }}
+                                        {% endif %}
+                                    </h6>
+                                    <h3 class="mb-0">{{ format_number(total) }}</h3>
+                                    <small class="text-muted">единиц</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.variation-info {
+    max-width: 150px;
+}
+.variation-info .badge {
+    margin-right: 3px;
+    margin-bottom: 3px;
+    font-size: 0.7rem;
+}
+.table td {
+    vertical-align: middle;
+}
+.badge {
+    font-size: 0.9rem;
+    padding: 0.5em 0.7em;
+}
+.badge i {
+    margin-right: 3px;
+}
+.card .table-sm td, .card .table-sm th {
+    padding: 0.75rem;
+}
+.text-muted small {
+    font-size: 0.8rem;
+}
+.table-primary th {
+    background-color: #e7f1ff;
+    color: #0a58ca;
+}
+.alert {
+    border-radius: 8px;
+}
+.bg-purple {
+    background-color: #6f42c1 !important;
+    color: white;
+}
+.card.bg-light {
+    transition: transform 0.2s;
+}
+.card.bg-light:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+.table th.text-end, .table td.text-end {
+    text-align: right;
+}
+.table tfoot {
+    font-weight: bold;
+}
+</style>
+
+<script>
+function postDocument(id) {
+    Swal.fire({
+        title: '{{ get_translation('documents', 'confirm_post') }}',
+        text: '{{ get_translation('documents', 'confirm_post_message') }}',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '{{ get_translation('documents', 'yes_post') }}',
+        cancelButtonText: '{{ get_translation('common', 'cancel') }}'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/documents/${id}/post`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '{{ get_translation('common', 'success') }}',
+                        text: data.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: '{{ get_translation('common', 'error') }}',
+                        text: data.error
+                    });
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Ошибка',
+                    text: 'Ошибка соединения с сервером'
+                });
+            });
+        }
+    });
+}
+</script>
+{% endblock %}

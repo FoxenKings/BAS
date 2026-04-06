@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Импорт из Excel{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="fas fa-file-excel me-2"></i>Импорт данных из Excel-файлов</h5>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-info">
+            <strong>Источники данных (папка data/):</strong>
+            <ul class="mb-0 mt-2">
+              <li>inventory.xlsx, equipment.xlsx, assets.xlsx, consumable.xlsx — инвентарь старой системы</li>
+              <li>tool.xlsx — инструменты</li>
+              <li>Экземпляры.xlsx — основной файл экземпляров</li>
+            </ul>
+          </div>
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Дубли определяются по инвентарному номеру и серийному номеру — повторный импорт безопасен.
+          </div>
+
+          <div id="result-area" style="display:none;"></div>
+
+          <button id="run-btn" class="btn btn-primary btn-lg" onclick="runImport()">
+            <i class="fas fa-play me-2"></i>Запустить импорт
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function runImport() {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Импорт...';
+
+  fetch('/admin/excel-import/run', {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.content || ''
+    },
+  })
+  .then(r => r.json())
+  .then(data => {
+    const area = document.getElementById('result-area');
+    area.style.display = 'block';
+    if (data.success) {
+      const s = data.stats;
+      const filesStr = s.files_processed.length ? s.files_processed.join(', ') : '—';
+      const errorsHtml = s.errors.length
+        ? '<li class="text-danger">Ошибок: <strong>' + s.errors.length + '</strong>: '
+          + s.errors.slice(0, 5).join('; ') + '</li>'
+        : '';
+      area.innerHTML = `
+        <div class="alert alert-success">
+          <h6>Импорт завершён успешно</h6>
+          <ul>
+            <li>Файлов обработано: <strong>${filesStr}</strong></li>
+            <li>Номенклатур создано: <strong>${s.nomenclatures_created}</strong></li>
+            <li>Номенклатур пропущено (дубли): <strong>${s.nomenclatures_skipped}</strong></li>
+            <li>Экземпляров создано: <strong>${s.instances_created}</strong></li>
+            <li>Экземпляров пропущено (дубли): <strong>${s.instances_skipped}</strong></li>
+            ${errorsHtml}
+          </ul>
+        </div>`;
+    } else {
+      area.innerHTML = `<div class="alert alert-danger"><strong>Ошибка:</strong> ${data.error}</div>`;
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-play me-2"></i>Запустить снова';
+  })
+  .catch(e => {
+    const area = document.getElementById('result-area');
+    area.innerHTML = `<div class="alert alert-danger">Ошибка: ${e}</div>`;
+    area.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-play me-2"></i>Запустить снова';
+  });
+}
+</script>
+{% endblock %}

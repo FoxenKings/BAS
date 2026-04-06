@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_translation('storage_bins', 'title') }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="px-3 pt-2">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home"></i> Главная</a></li>
+        <li class="breadcrumb-item active">{{ get_translation('storage_bins', 'title') }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-th"></i> {{ get_translation('storage_bins', 'title') }}
+        </h1>
+        <a href="{{ url_for('warehouses.add_storage_bin') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> {{ get_translation('storage_bins', 'add') }}
+        </a>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-filter"></i> {{ get_translation('common', 'filters') }}
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="warehouse_id" class="form-label">{{ get_translation('warehouses', 'title') }}</label>
+                    <select class="form-select" id="warehouse_id" name="warehouse_id">
+                        <option value="">{{ get_translation('common', 'all') }}</option>
+                        {% for w in warehouses %}
+                        <option value="{{ w.id }}" {% if request.args.get('warehouse_id')|int == w.id %}selected{% endif %}>
+                            {{ w.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="zone" class="form-label">{{ get_translation('storage_bins', 'zone') }}</label>
+                    <input type="text" class="form-control" id="zone" name="zone" value="{{ request.args.get('zone', '') }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="is_active" class="form-label">{{ get_translation('common', 'status') }}</label>
+                    <select class="form-select" id="is_active" name="is_active">
+                        <option value="">{{ get_translation('common', 'all') }}</option>
+                        <option value="1" {% if request.args.get('is_active') == '1' %}selected{% endif %}>{{ get_translation('common', 'active') }}</option>
+                        <option value="0" {% if request.args.get('is_active') == '0' %}selected{% endif %}>{{ get_translation('common', 'inactive') }}</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="has_items" class="form-label">{{ get_translation('storage_bins', 'content') }}</label>
+                    <select class="form-select" id="has_items" name="has_items">
+                        <option value="">{{ get_translation('common', 'all') }}</option>
+                        <option value="1" {% if request.args.get('has_items') == '1' %}selected{% endif %}>{{ get_translation('storage_bins', 'with_items') }}</option>
+                        <option value="0" {% if request.args.get('has_items') == '0' %}selected{% endif %}>{{ get_translation('storage_bins', 'empty') }}</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> {{ get_translation('common', 'apply') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Схема склада (визуализация) -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-map"></i> {{ get_translation('storage_bins', 'layout') }}
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for zone, zone_bins in zones.items() %}
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <i class="fas fa-layer-group"></i> {{ get_translation('storage_bins', 'zone') }} {{ zone }}
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for bin in zone_bins %}
+                                <div class="bin-cell {% if bin.occupancy > 0 %}bg-success{% else %}bg-light{% endif %}"
+                                     style="width: 60px; height: 60px; border: 1px solid #dee2e6; border-radius: 4px; 
+                                            display: flex; flex-direction: column; align-items: center; justify-content: center;
+                                            cursor: pointer;" 
+                                     onclick="location.href='{{ url_for('warehouses.view_storage_bin', id=bin.id) }}'"
+                                     title="{{ bin.code }} - {{ format_number(bin.occupancy) }}/{{ format_number(bin.capacity) if bin.capacity else '∞' }}">
+                                    <small><strong>{{ bin.code.split('-')[-1] }}</strong></small>
+                                    <small>{{ format_number(bin.occupancy) }}</small>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица ячеек -->
+    <div class="card table-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-th"></i> {{ get_translation('storage_bins', 'list') }}</span>
+            <span class="text-muted text-sm">Всего: <strong>{{ bins|length }}</strong></span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="binsTable">
+                    <thead>
+                        <tr>
+                            <th>{{ get_translation('storage_bins', 'code') }}</th>
+                            <th>{{ get_translation('common', 'name') }}</th>
+                            <th>{{ get_translation('warehouses', 'title') }}</th>
+                            <th>{{ get_translation('storage_bins', 'zone') }}</th>
+                            <th class="d-mobile-none">{{ get_translation('storage_bins', 'rack') }}</th>
+                            <th class="d-mobile-none">{{ get_translation('storage_bins', 'shelf') }}</th>
+                            <th class="d-mobile-none">{{ get_translation('storage_bins', 'bin') }}</th>
+                            <th class="text-end">{{ get_translation('storage_bins', 'capacity') }}</th>
+                            <th class="text-end">{{ get_translation('storage_bins', 'occupancy') }}</th>
+                            <th>{{ get_translation('common', 'status') }}</th>
+                            <th class="col-actions">{{ get_translation('common', 'actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bin in bins %}
+                        <tr>
+                            <td><span class="text-code">{{ bin.code }}</span></td>
+                            <td>{{ bin.name or '—' }}</td>
+                            <td><a href="{{ url_for('warehouses.warehouse_stocks', id=bin.warehouse_id) }}">{{ bin.warehouse_name }}</a></td>
+                            <td>{{ bin.zone or '—' }}</td>
+                            <td class="d-mobile-none">{{ bin.rack or '—' }}</td>
+                            <td class="d-mobile-none">{{ bin.shelf or '—' }}</td>
+                            <td class="d-mobile-none">{{ bin.bin or '—' }}</td>
+                            <td class="text-end">{{ format_number(bin.capacity) if bin.capacity else '∞' }} {{ bin.capacity_unit or '' }}</td>
+                            <td class="text-end">
+                                {% if bin.occupancy > 0 %}
+                                <span class="badge bg-success">{{ format_number(bin.occupancy) }}</span>
+                                {% else %}
+                                <span class="badge bg-secondary">0</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if bin.is_active %}
+                                <span class="badge badge-active">{{ get_translation('common', 'active') }}</span>
+                                {% else %}
+                                <span class="badge badge-inactive">{{ get_translation('common', 'inactive') }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('warehouses.view_storage_bin', id=bin.id) }}" class="btn btn-action btn-outline-info" title="{{ get_translation('common', 'view') }}">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{{ url_for('warehouses.edit_storage_bin', id=bin.id) }}" class="btn btn-action btn-outline-primary" title="{{ get_translation('common', 'edit') }}">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{{ url_for('warehouses.storage_bin_stock', id=bin.id) }}" class="btn btn-action btn-outline-secondary" title="{{ get_translation('storage_bins', 'stocks') }}">
+                                        <i class="fas fa-boxes"></i>
+                                    </a>
+                                    <a href="{{ url_for('logs.object_history', entity_type='storage_bin', entity_id=bin.id) }}"
+                                       class="btn btn-action btn-outline-info" title="{{ get_translation('common', 'history') }}">
+                                        <i class="fas fa-history"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-action btn-outline-danger" title="{{ get_translation('common', 'delete') }}"
+                                            onclick="deleteBin({{ bin.id }}, '{{ bin.code|escape }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not bins %}
+                        <tr>
+                            <td colspan="11">
+                                <div class="empty-state">
+                                    <i class="fas fa-th empty-icon"></i>
+                                    <h5>Нет ячеек хранения</h5>
+                                    <p>Добавьте первую ячейку хранения</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.bin-cell:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+}
+</style>
+
+<script>
+$(document).ready(function() {
+    $('#binsTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/ru.json'
+        },
+        order: [[0, 'asc']],
+        pageLength: 25,
+        columnDefs: [
+            { orderable: false, targets: [10] }
+        ]
+    });
+});
+
+function deleteBin(id, code) {
+    Swal.fire({
+        title: '{{ get_translation('common', 'confirm_delete') }}',
+        html: `<p>{{ get_translation('common', 'confirm_delete_message') }} <strong>"${code}"</strong>?</p>
+               <p class="text-danger"><small>{{ get_translation('common', 'cannot_undo') }}</small></p>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: '{{ get_translation('common', 'yes_delete') }}',
+        cancelButtonText: '{{ get_translation('common', 'cancel') }}'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/storage-bins/${id}/delete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            }).then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                }
+            });
+        }
+    });
+}
+</script>
+{% endblock %}

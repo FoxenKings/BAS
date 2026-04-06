@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Популярность модификаций{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="px-3 pt-2">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home"></i> Главная</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('reports.reports') }}">Отчёты</a></li>
+        <li class="breadcrumb-item active">Популярность модификаций</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-star"></i> Популярность модификаций
+        </h1>
+        <div>
+            <button class="btn btn-success" onclick="window.print()">
+                <i class="fas fa-print"></i> Печать
+            </button>
+            <a href="{{ url_for('reports.reports') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> К отчётам
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <!-- По размерам -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-ruler"></i> Статистика по размерам
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Размер</th>
+                                    <th>Моделей</th>
+                                    <th>Всего выдано</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in size_stats %}
+                                <tr>
+                                    <td>{{ s.size or '—' }}</td>
+                                    <td>{{ s.models_count }}</td>
+                                    <td>{{ s.total_issued or 0 }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-3">Нет данных</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- По цветам -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-palette"></i> Статистика по цветам
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Цвет</th>
+                                    <th>Моделей</th>
+                                    <th>Всего выдано</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for c in color_stats %}
+                                <tr>
+                                    <td>{{ c.color or '—' }}</td>
+                                    <td>{{ c.models_count }}</td>
+                                    <td>{{ c.total_issued or 0 }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-3">Нет данных</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Полный список -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-table"></i> Детальные данные (топ-100)
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 dataTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Номенклатура</th>
+                            <th>Размер</th>
+                            <th>Цвет</th>
+                            <th>SKU модификации</th>
+                            <th>Всего выдано</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in data %}
+                        <tr>
+                            <td>{{ row.nomenclature_name or '—' }}</td>
+                            <td>{{ row.size or '—' }}</td>
+                            <td>{{ row.color or '—' }}</td>
+                            <td><code>{{ row.sku or '—' }}</code></td>
+                            <td>{{ row.total_issued or 0 }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="fas fa-chart-bar fa-2x mb-2 d-block"></i>
+                                Нет данных для отображения
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_translation('batches', 'batch_stocks_title', batch_number=batch.batch_number) }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-boxes"></i> {{ get_translation('batches', 'batch_stocks_title', batch_number=batch.batch_number) }}
+        </h1>
+        <div>
+            <a href="{{ url_for('warehouses.edit_batch', id=batch.id) }}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> {{ get_translation('common', 'edit') }}
+            </a>
+            <a href="{{ url_for('warehouses.batches_list') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> {{ get_translation('common', 'back') }}
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-info-circle"></i> {{ get_translation('batches', 'batch_info') }}
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 40%;">{{ get_translation('batches', 'nomenclature') }}:</th>
+                            <td>
+                                <a href="{{ url_for('nomenclatures.edit_nomenclature', id=batch.nomenclature_id) }}">{{ batch.nomenclature_name }}</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('batches', 'batch_number') }}:</th>
+                            <td><code>{{ batch.batch_number }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('batches', 'internal_batch_code') }}:</th>
+                            <td><code>{{ batch.internal_batch_code or '—' }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('batches', 'supplier') }}:</th>
+                            <td>
+                                {% if batch.supplier_id %}
+                                <a href="{{ url_for('suppliers.supplier_details', id=batch.supplier_id) }}">{{ batch.supplier_name }}</a>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('batches', 'expiry_date') }}:</th>
+                            <td>
+                                {% if batch.expiry_date %}
+                                    {% set days = (batch.expiry_date|string|to_date - now().date()).days %}
+                                    <span class="{% if days < 0 %}text-danger{% elif days < 30 %}text-warning{% endif %}">
+                                        {{ format_date(batch.expiry_date) }}
+                                        {% if days < 0 %}
+                                            ({{ get_translation('batches', 'expired') }})
+                                        {% elif days < 30 %}
+                                            ({{ get_translation('batches', 'days_left_short', days=days) }})
+                                        {% endif %}
+                                    </span>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('batches', 'quality_status') }}:</th>
+                            <td>
+                                {% if batch.quality_status == 'approved' %}
+                                    <span class="badge bg-success">{{ get_translation('batches', 'approved') }}</span>
+                                {% elif batch.quality_status == 'quarantine' %}
+                                    <span class="badge bg-warning">{{ get_translation('batches', 'quarantine') }}</span>
+                                {% elif batch.quality_status == 'rejected' %}
+                                    <span class="badge bg-danger">{{ get_translation('batches', 'rejected') }}</span>
+                                {% elif batch.quality_status == 'expired' %}
+                                    <span class="badge bg-secondary">{{ get_translation('batches', 'expired') }}</span>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-warehouse"></i> {{ get_translation('batches', 'stocks_by_warehouse') }}
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>{{ get_translation('warehouses', 'title') }}</th>
+                                    <th>{{ get_translation('storage_bins', 'title') }}</th>
+                                    <th class="text-end">{{ get_translation('common', 'quantity') }}</th>
+                                    <th class="text-end">{{ get_translation('stocks', 'reserved') }}</th>
+                                    <th class="text-end">{{ get_translation('stocks', 'available') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stock in stocks %}
+                                <tr>
+                                    <td>
+                                        {% if stock.warehouse_id %}
+                                        <a href="{{ url_for('warehouses.warehouse_stocks', id=stock.warehouse_id) }}">{{ stock.warehouse_name }}</a>
+                                        {% else %}
+                                        {{ stock.warehouse_name }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if stock.storage_bin_id %}
+                                        <a href="{{ url_for('warehouses.view_storage_bin', id=stock.storage_bin_id) }}">{{ stock.storage_bin_code or '—' }}</a>
+                                        {% else %}
+                                        {{ stock.storage_bin_code or '—' }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">{{ format_number(stock.quantity) }}</td>
+                                    <td class="text-end">{{ format_number(stock.reserved_quantity or 0) }}</td>
+                                    <td class="text-end">{{ format_number(stock.available_quantity) }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">
+                                        {{ get_translation('batches', 'no_stocks') }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

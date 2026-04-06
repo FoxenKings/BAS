@@ -1,0 +1,514 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_translation('instances', 'title') }} - {{ instance.inventory_number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-cube"></i> {{ get_translation('instances', 'title') }} {{ instance.inventory_number }}
+        </h1>
+        <div>
+            <a href="{{ url_for('instances.edit_instance', id=instance.id) }}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> {{ get_translation('common', 'edit') }}
+            </a>
+            <a href="{{ url_for('instances.instances_list') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> {{ get_translation('common', 'back') }}
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-info-circle"></i> {{ get_translation('instances', 'basic_info') }}
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 40%;">{{ get_translation('instances', 'inventory_number') }} (новый):</th>
+                            <td><code class="fs-6">{{ instance.inventory_number }}</code></td>
+                        </tr>
+                        {% if instance.old_inventory_number %}
+                        <tr>
+                            <th>Старый инв. номер:</th>
+                            <td>
+                                <code class="fs-6">{{ instance.old_inventory_number }}</code>
+                                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="copyToClipboard('{{ instance.old_inventory_number }}')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <th>{{ get_translation('instances', 'nomenclature') }}:</th>
+                            <td><a href="{{ url_for('nomenclatures.edit_nomenclature', id=instance.nomenclature_id) }}">{{ instance.nomenclature_name }}</a> ({{ instance.sku }})</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('instances', 'serial_number') }}:</th>
+                            <td>{{ instance.serial_number or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('instances', 'barcode') }}:</th>
+                            <td>{{ instance.barcode or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('common', 'status') }}:</th>
+                            <td>
+                                {% if instance.status %}
+                                <span class="badge bg-{{ get_status_color(instance.status) }}">{{ get_status_text(instance.status) }}</span>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('instances', 'condition') }}:</th>
+                            <td>
+                                {% if instance.condition %}
+                                <span class="badge bg-{{ get_status_color(instance.condition) }}">{{ get_translation('conditions', instance.condition) }}</span>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-map-marker-alt"></i> {{ get_translation('instances', 'location_info') }}
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 40%;">{{ get_translation('locations', 'title') }}:</th>
+                            <td>
+                                {% if instance.location_id %}
+                                <a href="{{ url_for('employees.location_detail', id=instance.location_id) }}">{{ instance.location_name }}</a>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('warehouses', 'title') }}:</th>
+                            <td>
+                                {% if instance.warehouse_id %}
+                                <a href="{{ url_for('warehouses.warehouse_stocks', id=instance.warehouse_id) }}">{{ instance.warehouse_name }}</a>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('employees', 'title') }}:</th>
+                            <td>
+                                {% if instance.employee_id %}
+                                <a href="{{ url_for('employees.view_employee', id=instance.employee_id) }}">{{ instance.employee_name }}</a>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-shopping-cart"></i> {{ get_translation('instances', 'purchase_info') }}
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 40%;">{{ get_translation('instances', 'purchase_date') }}:</th>
+                            <td>{{ format_date(instance.purchase_date) or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('instances', 'purchase_price') }}:</th>
+                            <td>{{ format_currency(instance.purchase_price) or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('instances', 'warranty_until') }}:</th>
+                            <td>{{ format_date(instance.warranty_until) or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('suppliers', 'title') }}:</th>
+                            <td>
+                                {% if instance.supplier_id %}
+                                <a href="{{ url_for('suppliers.supplier_details', id=instance.supplier_id) }}">{{ instance.supplier_name }}</a>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-tools"></i> {{ get_translation('instances', 'maintenance_info') }}
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 40%;">{{ get_translation('instances', 'last_calibration') }}:</th>
+                            <td>{{ format_date(instance.last_calibration) or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('instances', 'next_calibration') }}:</th>
+                            <td>{{ format_date(instance.next_calibration) or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('instances', 'last_maintenance') }}:</th>
+                            <td>{{ format_date(instance.last_maintenance) or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('instances', 'next_maintenance') }}:</th>
+                            <td>{{ format_date(instance.next_maintenance) or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('instances', 'operating_hours') }}:</th>
+                            <td>{{ format_number(instance.operating_hours or 0) }} {{ get_translation('units', 'hours') }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- QR-КОД ЭКЗЕМПЛЯРА -->
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-qrcode"></i> QR-код экземпляра
+                </div>
+                <div class="card-body text-center">
+                    <div id="qr-container">
+                        <button class="btn btn-outline-primary" onclick="loadQRCode({{ instance.id }})">
+                            <i class="fas fa-qrcode"></i> Показать QR-код
+                        </button>
+                    </div>
+                    <div id="qr-image" class="mt-2" style="display:none;">
+                        <img id="qr-img" src="" alt="QR-код" class="img-fluid" style="max-width:200px;">
+                        <div class="mt-2">
+                            <small class="text-muted" id="qr-data-text"></small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-secondary mt-2" onclick="printQR()">
+                            <i class="fas fa-print"></i> Распечатать
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- БЛОК ХАРАКТЕРИСТИК СИЗ -->
+        {% if instance.siz_size or instance.siz_color or instance.siz_material or instance.siz_wear_period or instance.siz_temp %}
+        <div class="col-12">
+            <div class="card mb-3">
+                <div class="card-header bg-warning text-dark">
+                    <i class="fas fa-hard-hat"></i> Характеристики СИЗ (средства индивидуальной защиты)
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% if instance.siz_size %}
+                        <div class="col-md-3 mb-2">
+                            <strong>Размер:</strong> {{ instance.siz_size }}
+                        </div>
+                        {% endif %}
+                        {% if instance.siz_height %}
+                        <div class="col-md-3 mb-2">
+                            <strong>Рост:</strong> {{ instance.siz_height }}
+                        </div>
+                        {% endif %}
+                        {% if instance.siz_fullness %}
+                        <div class="col-md-3 mb-2">
+                            <strong>Полнота:</strong> {{ instance.siz_fullness }}
+                        </div>
+                        {% endif %}
+                        {% if instance.siz_color %}
+                        <div class="col-md-3 mb-2">
+                            <strong>Цвет:</strong> {{ instance.siz_color }}
+                        </div>
+                        {% endif %}
+                        {% if instance.siz_material %}
+                        <div class="col-md-3 mb-2">
+                            <strong>Материал:</strong> {{ instance.siz_material }}
+                        </div>
+                        {% endif %}
+                        {% if instance.siz_insulation %}
+                        <div class="col-md-3 mb-2">
+                            <strong>Утеплитель:</strong> {{ instance.siz_insulation }}
+                        </div>
+                        {% endif %}
+                        {% if instance.siz_temp %}
+                        <div class="col-md-3 mb-2">
+                            <strong>Температурный режим:</strong> {{ instance.siz_temp }}
+                        </div>
+                        {% endif %}
+                        {% if instance.siz_gost %}
+                        <div class="col-md-3 mb-2">
+                            <strong>ГОСТ/ТУ:</strong> {{ instance.siz_gost }}
+                        </div>
+                        {% endif %}
+                        {% if instance.siz_wear_period %}
+                        <div class="col-md-3 mb-2">
+                            <strong>Срок носки:</strong> {{ instance.siz_wear_period }} мес.
+                        </div>
+                        {% endif %}
+                        {% if instance.siz_previous_issue %}
+                        <div class="col-md-3 mb-2">
+                            <strong>Предыдущая выдача:</strong> {{ format_date(instance.siz_previous_issue) }}
+                        </div>
+                        {% endif %}
+                        {% if instance.siz_next_replacement %}
+                        <div class="col-md-3 mb-2">
+                            <strong>Следующая замена:</strong> 
+                            <span class="badge {% if instance.siz_next_replacement < now().date() %}bg-danger{% else %}bg-success{% endif %}">
+                                {{ format_date(instance.siz_next_replacement) }}
+                            </span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- БЛОК СОСТАВА КОМПЛЕКТА (ЕСЛИ ЭТО КОМПЛЕКТ) -->
+        {% if kit_components %}
+        <div class="col-12">
+            <div class="card mb-3">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-tools"></i> Состав комплекта
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>{{ get_translation('nomenclatures', 'sku') }}</th>
+                                    <th>{{ get_translation('nomenclatures', 'name') }}</th>
+                                    <th class="text-end">{{ get_translation('common', 'quantity') }}</th>
+                                    <th>Новый инв. номер</th>
+                                    <th>Старый инв. номер</th>
+                                    <th>{{ get_translation('common', 'status') }}</th>
+                                    <th>{{ get_translation('common', 'actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for component in kit_components %}
+                                <tr>
+                                    <td><code>{{ component.sku }}</code></td>
+                                    <td>{{ component.name }}</td>
+                                    <td class="text-end">{{ component.quantity }}</td>
+                                    <td>
+                                        {% if component.instance_id and component.inventory_number %}
+                                        <a href="{{ url_for('instances.view_instance', inventory_number=component.inventory_number) }}">
+                                            <code>{{ component.inventory_number }}</code>
+                                        </a>
+                                        {% elif component.instance_id %}
+                                        <code>{{ component.inventory_number or '—' }}</code>
+                                        {% else %}
+                                        <span class="text-warning"><em>не создан</em></span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if component.old_inventory_number %}
+                                        <code>{{ component.old_inventory_number }}</code>
+                                        {% else %}
+                                        —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if component.instance_id %}
+                                            {% if component.status %}
+                                            <span class="badge bg-{{ get_status_color(component.status) }}">
+                                                {{ get_status_text(component.status) }}
+                                            </span>
+                                            {% else %}
+                                            <span class="badge bg-success">в комплекте</span>
+                                            {% endif %}
+                                        {% else %}
+                                        <span class="badge bg-secondary">отсутствует</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if component.instance_id and component.inventory_number %}
+                                        <a href="{{ url_for('instances.view_instance', inventory_number=component.inventory_number) }}"
+                                           class="btn btn-sm btn-outline-info" title="Просмотр">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-outline-success" 
+                                                onclick="createComponentInstance({{ component.nomenclature_id }}, {{ instance.id }})"
+                                                title="Создать компонент">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="alert alert-info mt-3">
+                        <i class="fas fa-info-circle"></i>
+                        Это комплект, состоящий из нескольких компонентов.
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- БЛОК ДЛЯ ЭКЗЕМПЛЯРОВ, КОТОРЫЕ ЯВЛЯЮТСЯ ЧАСТЬЮ КОМПЛЕКТА -->
+        {% if parent_instance %}
+        <div class="col-12">
+            <div class="card mb-3">
+                <div class="card-header bg-warning">
+                    <i class="fas fa-link"></i> Часть комплекта
+                </div>
+                <div class="card-body">
+                    <p>
+                        Данный экземпляр является частью комплекта:
+                        {% if parent_instance.inventory_number %}
+                        <a href="{{ url_for('instances.view_instance', inventory_number=parent_instance.inventory_number) }}">
+                            <strong>{{ parent_instance.nomenclature_name }}</strong>
+                        </a>
+                        {% else %}<strong>{{ parent_instance.nomenclature_name }}</strong>{% endif %}
+                            (Новый инв. №: <code>{{ parent_instance.inventory_number or '—' }}</code>
+                            {% if parent_instance.old_inventory_number %}
+                            , Старый инв. №: <code>{{ parent_instance.old_inventory_number }}</code>
+                            {% endif %})
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if instance.status == 'in_use' %}
+        <div class="col-12">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-hand-holding"></i> {{ get_translation('instances', 'issuance_info') }}
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 15%;">{{ get_translation('instances', 'issued_date') }}:</th>
+                            <td style="width: 35%;">{{ format_date(instance.issued_date) or '—' }}</td>
+                            <th style="width: 15%;">{{ get_translation('instances', 'expected_return_date') }}:</th>
+                            <td style="width: 35%;">{{ format_date(instance.expected_return_date) or '—' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        Swal.fire({
+            icon: 'success',
+            title: 'Скопировано!',
+            text: 'Номер скопирован в буфер обмена',
+            timer: 1500,
+            showConfirmButton: false
+        });
+    });
+}
+
+function createComponentInstance(componentNomenclatureId, parentInstanceId) {
+    Swal.fire({
+        title: 'Создание компонента',
+        html: `
+            <p>Создание нового экземпляра компонента</p>
+            <div class="text-start mt-3">
+                <label class="form-label">Новый инвентарный номер</label>
+                <input type="text" class="form-control" id="inventoryNumber" 
+                       placeholder="Оставьте пустым для автогенерации">
+            </div>
+            <div class="text-start mt-3">
+                <label class="form-label">Старый инвентарный номер</label>
+                <input type="text" class="form-control" id="oldInventoryNumber" 
+                       placeholder="Введите старый номер (если есть)">
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Создать',
+        cancelButtonText: 'Отмена',
+        preConfirm: () => {
+            return {
+                inventory_number: document.getElementById('inventoryNumber').value,
+                old_inventory_number: document.getElementById('oldInventoryNumber').value
+            };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('/api/instances/create_component', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    nomenclature_id: componentNomenclatureId,
+                    parent_instance_id: parentInstanceId,
+                    inventory_number: result.value.inventory_number,
+                    old_inventory_number: result.value.old_inventory_number
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire('Успех!', data.message, 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    Swal.fire('Ошибка!', data.error, 'error');
+                }
+            });
+        }
+    });
+}
+
+function loadQRCode(instanceId) {
+    fetch('/api/qr/instance/' + instanceId)
+        .then(r => r.json())
+        .then(data => {
+            if (data.qr) {
+                document.getElementById('qr-container').style.display = 'none';
+                document.getElementById('qr-image').style.display = 'block';
+                document.getElementById('qr-img').src = data.qr;
+                document.getElementById('qr-data-text').textContent = data.data;
+            } else {
+                showToast('Ошибка генерации QR: ' + (data.error || 'неизвестная ошибка'), 'error');
+            }
+        })
+        .catch(() => showToast('Ошибка загрузки QR-кода', 'error'));
+}
+
+function printQR() {
+    var img = document.getElementById('qr-img').src;
+    var label = document.getElementById('qr-data-text').textContent;
+    var win = window.open('', '_blank');
+    win.document.write('<html><body style="text-align:center;font-family:Arial">'
+        + '<img src="' + img + '" style="max-width:300px"><br>'
+        + '<p>' + label + '</p>'
+        + '<script>window.onload=function(){window.print()}<\/script>'
+        + '</body></html>');
+    win.document.close();
+}
+</script>
+{% endblock %}

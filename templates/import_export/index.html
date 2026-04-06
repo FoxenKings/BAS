@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Импорт/Экспорт{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-sync-alt"></i> Импорт/Экспорт данных
+        </h1>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- УНИВЕРСАЛЬНЫЙ ИМПОРТ (НОВЫЙ) -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-file-import"></i> Универсальный импорт
+                </div>
+                <div class="card-body">
+                    <p class="card-text">
+                        Импорт любых данных из Excel файла. Поддерживаются:
+                    </p>
+                    <ul>
+                        <li>Номенклатура</li>
+                        <li>Экземпляры (индивидуальный учет)</li>
+                        <li>Партии (партионный учет)</li>
+                        <li>Поставщики</li>
+                        <li>Сотрудники</li>
+                        <li>Комплекты</li>
+                    </ul>
+                    <a href="{{ url_for('import_export.import_universal') }}" class="btn btn-primary">
+                        <i class="fas fa-upload"></i> Перейти к универсальному импорту
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ЭКСПОРТ -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 border-success">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-file-export"></i> Экспорт данных
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Выберите тип данных для экспорта:</p>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('export.export_nomenclatures') }}" class="btn btn-outline-success">
+                            <i class="fas fa-cubes"></i> Номенклатура
+                        </a>
+                        <a href="{{ url_for('export.export_instances') }}" class="btn btn-outline-success">
+                            <i class="fas fa-cube"></i> Экземпляры
+                        </a>
+                        <a href="{{ url_for('export.export_batches') }}" class="btn btn-outline-success">
+                            <i class="fas fa-layer-group"></i> Партии
+                        </a>
+                        <a href="{{ url_for('export.export_stocks') }}" class="btn btn-outline-success">
+                            <i class="fas fa-boxes"></i> Остатки
+                        </a>
+                        <a href="{{ url_for('export.export_documents') }}" class="btn btn-outline-success">
+                            <i class="fas fa-file-alt"></i> Документы
+                        </a>
+                        <a href="{{ url_for('export.export_kits') }}" class="btn btn-outline-success">
+                            <i class="fas fa-puzzle-piece"></i> Комплекты
+                        </a>
+                        <a href="{{ url_for('export.export_full') }}" class="btn btn-outline-success">
+                            <i class="fas fa-database"></i> Полный экспорт
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ШАБЛОНЫ ДЛЯ ЗАГРУЗКИ -->
+        <div class="col-12 mb-4">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-download"></i> Скачать шаблоны для заполнения
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Улучшенный шаблон (рекомендуется)</h5>
+                            <p>Содержит формулы, справочники, примеры заполнения для всех типов данных.</p>
+                            <a href="{{ url_for('import_export.download_enhanced_template') }}" class="btn btn-info">
+                                <i class="fas fa-file-excel"></i> Скачать улучшенный шаблон
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Простой шаблон</h5>
+                            <p>Базовый шаблон для импорта поступлений.</p>
+                            <a href="{{ url_for('import_export.download_receipt_template') }}" class="btn btn-outline-info">
+                                <i class="fas fa-file-excel"></i> Скачать простой шаблон
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

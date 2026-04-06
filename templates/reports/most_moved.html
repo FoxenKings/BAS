@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_translation('reports', 'most_moved') }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-chart-line"></i> {{ get_translation('reports', 'most_moved') }}
+        </h1>
+        <div>
+            <a href="{{ url_for('reports.reports') }}" class="btn btn-primary">
+                <i class="fas fa-arrow-left"></i> {{ get_translation('reports', 'back_to_reports') }}
+            </a>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-filter"></i> {{ get_translation('reports', 'period_filter') }}
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <label for="date_from" class="form-label">{{ get_translation('reports', 'date_from') }}</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from" 
+                           value="{{ request.args.get('date_from') or (now().replace(day=1)).strftime('%Y-%m-%d') }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="date_to" class="form-label">{{ get_translation('reports', 'date_to') }}</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to" 
+                           value="{{ request.args.get('date_to') or now().strftime('%Y-%m-%d') }}">
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> {{ get_translation('common', 'apply') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Топ-10 по движениям -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-arrow-up text-success"></i> {{ get_translation('reports', 'top_receipts') }}
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>{{ get_translation('nomenclatures', 'name') }}</th>
+                                    <th>{{ get_translation('categories', 'title') }}</th>
+                                    <th class="text-end">{{ get_translation('common', 'quantity') }}</th>
+                                    <th class="text-end">{{ get_translation('common', 'amount') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in top_receipts %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td><a href="{{ url_for('nomenclatures.edit_nomenclature', id=item.id) }}">{{ item.name }}</a></td>
+                                    <td>{{ item.category_name }}</td>
+                                    <td class="text-end">{{ format_number(item.total_quantity) }}</td>
+                                    <td class="text-end">{{ format_currency(item.total_amount) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-arrow-down text-danger"></i> {{ get_translation('reports', 'top_issuances') }}
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>{{ get_translation('nomenclatures', 'name') }}</th>
+                                    <th>{{ get_translation('categories', 'title') }}</th>
+                                    <th class="text-end">{{ get_translation('common', 'quantity') }}</th>
+                                    <th class="text-end">{{ get_translation('common', 'amount') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in top_issuances %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ item.name }}</td>
+                                    <td>{{ item.category_name }}</td>
+                                    <td class="text-end">{{ format_number(item.total_quantity) }}</td>
+                                    <td class="text-end">{{ format_currency(item.total_amount) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Общий рейтинг -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-star text-warning"></i> {{ get_translation('reports', 'activity_rating') }}
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="ratingTable">
+                    <thead>
+                        <tr>
+                            <th>{{ get_translation('reports', 'rating') }}</th>
+                            <th>{{ get_translation('nomenclatures', 'name') }}</th>
+                            <th>{{ get_translation('nomenclatures', 'sku') }}</th>
+                            <th>{{ get_translation('categories', 'title') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'total_movements') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'receipts') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'issuances') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'current_stock') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'turnover_days') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in rating %}
+                        <tr>
+                            <td><span class="badge bg-{{ 'warning' if loop.index <= 3 else 'secondary' }}">#{{ loop.index }}</span></td>
+                            <td><a href="{{ url_for('nomenclatures.edit_nomenclature', id=item.id) }}">{{ item.name }}</a></td>
+                            <td><code>{{ item.sku }}</code></td>
+                            <td>{{ item.category_name }}</td>
+                            <td class="text-end"><strong>{{ item.total_movements }}</strong></td>
+                            <td class="text-end text-success">{{ item.total_receipts }}</td>
+                            <td class="text-end text-danger">{{ item.total_issuances }}</td>
+                            <td class="text-end">{{ format_number(item.current_stock) }}</td>
+                            <td class="text-end">{{ "%.1f"|format(item.turnover) if item.turnover != 999 else '∞' }} {{ get_translation('reports', 'days') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#ratingTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/ru.json'
+        },
+        order: [[4, 'desc']],
+        pageLength: 25
+    });
+});
+</script>
+{% endblock %}

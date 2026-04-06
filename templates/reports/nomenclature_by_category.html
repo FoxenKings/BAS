@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_translation('reports', 'nomenclature_by_category') }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-sitemap"></i> {{ get_translation('reports', 'nomenclature_by_category') }}
+        </h1>
+        <div>
+            <a href="{{ url_for('reports.reports') }}" class="btn btn-primary">
+                <i class="fas fa-arrow-left"></i> {{ get_translation('reports', 'back_to_reports') }}
+            </a>
+        </div>
+    </div>
+
+    <!-- Диаграмма -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-chart-pie"></i> {{ get_translation('reports', 'distribution_by_category') }}
+                </div>
+                <div class="card-body">
+                    <canvas id="categoryChart" style="height: 300px;"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-chart-bar"></i> {{ get_translation('reports', 'items_by_category') }}
+                </div>
+                <div class="card-body">
+                    <canvas id="categoryBarChart" style="height: 300px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Сводка -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--primary-color), #1a252f);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('reports', 'total_items') }}</h6>
+                    <h3 class="stat-value">{{ summary.total }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--success-color), #218838);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('common', 'active') }}</h6>
+                    <h3 class="stat-value">{{ summary.active }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--info-color), #138496);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('categories', 'title') }}</h6>
+                    <h3 class="stat-value">{{ summary.categories }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--warning-color), #e0a800);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('reports', 'with_stock') }}</h6>
+                    <h3 class="stat-value">{{ summary.with_stock }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица по категориям -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-table"></i> {{ get_translation('reports', 'details_by_category') }}
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>{{ get_translation('categories', 'name') }}</th>
+                            <th>{{ get_translation('categories', 'item_type') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'total_items') }}</th>
+                            <th class="text-end">{{ get_translation('common', 'active') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'with_stock') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'total_quantity') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'total_amount') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cat in categories %}
+                        <tr>
+                            <td>{{ cat.name }}</td>
+                            <td>
+                                {% if cat.item_type == 'asset' %}{{ get_translation('item_types', 'asset') }}
+                                {% elif cat.item_type == 'tool' %}{{ get_translation('item_types', 'tool') }}
+                                {% elif cat.item_type == 'equipment' %}{{ get_translation('item_types', 'equipment') }}
+                                {% elif cat.item_type == 'consumable' %}{{ get_translation('item_types', 'consumable') }}
+                                {% elif cat.item_type == 'ppe' %}{{ get_translation('item_types', 'ppe') }}
+                                {% else %}{{ cat.item_type }}
+                                {% endif %}
+                            </td>
+                            <td class="text-end">{{ cat.total_items }}</td>
+                            <td class="text-end">{{ cat.active_items }}</td>
+                            <td class="text-end">{{ cat.with_stock }}</td>
+                            <td class="text-end">{{ format_number(cat.total_quantity) }}</td>
+                            <td class="text-end">{{ format_currency(cat.total_amount) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+try {
+    var ctxPie = document.getElementById('categoryChart').getContext('2d');
+    new Chart(ctxPie, {
+        type: 'pie',
+        data: {
+            labels: {{ chart_labels|tojson }},
+            datasets: [{
+                data: {{ chart_data|tojson }},
+                backgroundColor: [
+                    '#3498db', '#2ecc71', '#e74c3c', '#f39c12', 
+                    '#9b59b6', '#1abc9c', '#e67e22', '#34495e'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                title: {
+                    display: true,
+                    text: '{{ get_translation("reports", "distribution_by_category") }}'
+                }
+            }
+        }
+    });
+
+    var ctxBar = document.getElementById('categoryBarChart').getContext('2d');
+    new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+            labels: {{ chart_labels|tojson }},
+            datasets: [{
+                label: '{{ get_translation("reports", "items_count") }}',
+                data: {{ chart_data|tojson }},
+                backgroundColor: '#3498db'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: '{{ get_translation("reports", "items_by_category") }}'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '{{ get_translation("reports", "count") }}'
+                    }
+                }
+            }
+        }
+    });
+} catch(e) { console.error('Chart init error:', e); }
+});
+</script>
+{% endblock %}

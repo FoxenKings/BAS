@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_translation('users', 'title') }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="px-3 pt-2">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home"></i> Главная</a></li>
+        <li class="breadcrumb-item active">{{ get_translation('users', 'title') }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-users-cog"></i> {{ get_translation('users', 'title') }}
+        </h1>
+        <a href="{{ url_for('admin.add_user') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> {{ get_translation('users', 'add') }}
+        </a>
+    </div>
+
+    <div class="card table-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-users-cog"></i> {{ get_translation('users', 'title') }}</span>
+            <span class="text-muted text-sm">Всего: <strong>{{ users|length }}</strong></span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>{{ get_translation('users', 'username') }}</th>
+                            <th>{{ get_translation('users', 'full_name') }}</th>
+                            <th class="d-mobile-none">{{ get_translation('users', 'email') }}</th>
+                            <th>{{ get_translation('users', 'role') }}</th>
+                            <th>{{ get_translation('common', 'status') }}</th>
+                            <th class="d-mobile-none">{{ get_translation('users', 'last_login') }}</th>
+                            <th class="col-actions">{{ get_translation('common', 'actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td><span class="text-code">{{ user.id }}</span></td>
+                            <td>
+                                <i class="fas fa-user-circle me-2 text-primary"></i>
+                                {{ user.username }}
+                            </td>
+                            <td>{{ user.full_name or '—' }}</td>
+                            <td class="d-mobile-none">{{ user.email or '—' }}</td>
+                            <td>
+                                {% if user.role == 'admin' %}
+                                <span class="badge bg-danger">{{ get_translation('users', 'role_admin') }}</span>
+                                {% elif user.role == 'manager' %}
+                                <span class="badge bg-warning text-dark">{{ get_translation('users', 'role_manager') }}</span>
+                                {% elif user.role == 'storekeeper' %}
+                                <span class="badge bg-info">{{ get_translation('users', 'role_storekeeper') }}</span>
+                                {% elif user.role == 'accountant' %}
+                                <span class="badge bg-secondary">{{ get_translation('users', 'role_accountant') }}</span>
+                                {% else %}
+                                <span class="badge bg-success">{{ get_translation('users', 'role_user') }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.is_active %}
+                                <span class="badge badge-active">{{ get_translation('common', 'active') }}</span>
+                                {% else %}
+                                <span class="badge badge-inactive">{{ get_translation('users', 'blocked') }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="d-mobile-none">{{ format_datetime(user.last_login) if user.last_login else '—' }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('admin.edit_user', id=user.id) }}" class="btn btn-action btn-outline-primary" title="{{ get_translation('common', 'edit') }}">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{{ url_for('logs.object_history', entity_type='user', entity_id=user.id) }}"
+                                       class="btn btn-action btn-outline-info" title="{{ get_translation('common', 'history') }}">
+                                        <i class="fas fa-history"></i>
+                                    </a>
+                                    {% if current_user.id != user.id %}
+                                    <button type="button" class="btn btn-outline-{{ 'success' if user.is_active else 'warning' }}" 
+                                            onclick="toggleUserStatus({{ user.id }}, '{{ user.username|escape }}', {{ user.is_active|lower }})"
+                                            title="{{ get_translation('users', 'block') if user.is_active else get_translation('users', 'unblock') }}">
+                                        <i class="fas {{ 'fa-ban' if user.is_active else 'fa-check-circle' }}"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-action btn-outline-danger" title="{{ get_translation('common', 'delete') }}"
+                                            onclick="deleteUser({{ user.id }}, '{{ user.username|escape }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not users %}
+                        <tr>
+                            <td colspan="8">
+                                <div class="empty-state">
+                                    <i class="fas fa-users-cog empty-icon"></i>
+                                    <h5>Нет пользователей</h5>
+                                    <p>Добавьте первого пользователя</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#usersTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/ru.json'
+        },
+        order: [[0, 'asc']],
+        pageLength: 25,
+        columnDefs: [
+            { orderable: false, targets: [7] }
+        ]
+    });
+});
+
+function toggleUserStatus(id, username, currentStatus) {
+    const action = currentStatus ? '{{ get_translation("users", "block") }}' : '{{ get_translation("users", "unblock") }}';
+    Swal.fire({
+        title: '{{ get_translation("users", "confirm_status_change") }}',
+        html: `<p>{{ get_translation("users", "confirm_status_message") }} <strong>${action}</strong> {{ get_translation("users", "user") }} <strong>"${username}"</strong>?</p>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: currentStatus ? '#dc3545' : '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: `{{ get_translation('common', 'yes') }}, ${action}`,
+        cancelButtonText: '{{ get_translation('common', 'cancel') }}'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/users/${id}/toggle-status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            }).then(response => response.json())
+              .then(data => {
+                  if (data.success) {
+                      Swal.fire('{{ get_translation("common", "success") }}', data.message, 'success');
+                      setTimeout(() => location.reload(), 1500);
+                  } else {
+                      Swal.fire('{{ get_translation("common", "error") }}', data.error, 'error');
+                  }
+              });
+        }
+    });
+}
+
+function deleteUser(id, username) {
+    Swal.fire({
+        title: '{{ get_translation('common', 'confirm_delete') }}',
+        html: `<p>{{ get_translation('common', 'confirm_delete_message') }} <strong>"${username}"</strong>?</p>
+               <p class="text-danger"><small>{{ get_translation('common', 'cannot_undo') }}</small></p>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: '{{ get_translation('common', 'yes_delete') }}',
+        cancelButtonText: '{{ get_translation('common', 'cancel') }}'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/users/${id}/delete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            }).then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                }
+            });
+        }
+    });
+}
+</script>
+{% endblock %}

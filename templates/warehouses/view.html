@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_translation('warehouses', 'view_title', name=warehouse.name) }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .warehouse-header {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 15px;
+        margin-bottom: 30px;
+    }
+    .zone-card {
+        background-color: #f8f9fa;
+        border-left: 4px solid var(--secondary-color);
+        transition: all 0.2s;
+    }
+    .zone-card:hover {
+        background-color: #e9ecef;
+    }
+    .bin-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 10px;
+        margin-top: 15px;
+    }
+    .bin-item {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 8px;
+        text-align: center;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+    .bin-item:hover {
+        background: var(--secondary-color);
+        color: white;
+        border-color: var(--secondary-color);
+        cursor: pointer;
+    }
+    .bin-item.occupied {
+        background: #e8f5e9;
+        border-color: var(--success-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Хлебные крошки -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> {{ get_translation('common', 'dashboard') }}</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('warehouses.warehouses_list') }}">{{ get_translation('warehouses', 'title') }}</a></li>
+                    <li class="breadcrumb-item active">{{ warehouse.name }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Шапка склада -->
+    <div class="warehouse-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-warehouse fa-3x me-3"></i>
+                    <div>
+                        <div class="d-flex align-items-center mb-2">
+                            <h1 class="mb-0 me-3">{{ warehouse.name }}</h1>
+                            <span class="badge bg-light text-dark status-badge">{{ warehouse.code }}</span>
+                            {% if warehouse.is_active %}
+                                <span class="badge bg-success ms-2">{{ get_translation('common', 'active') }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary ms-2">{{ get_translation('common', 'inactive') }}</span>
+                            {% endif %}
+                        </div>
+                        <p class="mb-0 text-white-50">
+                            <i class="fas fa-tag"></i> {{ get_translation('warehouses', 'type') }}: 
+                            {% if warehouse.type == 'general' %}
+                                {{ get_translation('warehouses', 'type_general') }}
+                            {% elif warehouse.type == 'materials' %}
+                                {{ get_translation('warehouses', 'type_materials') }}
+                            {% elif warehouse.type == 'tools' %}
+                                {{ get_translation('warehouses', 'type_tools') }}
+                            {% elif warehouse.type == 'consumables' %}
+                                {{ get_translation('warehouses', 'type_consumables') }}
+                            {% elif warehouse.type == 'quarantine' %}
+                                {{ get_translation('warehouses', 'type_quarantine') }}
+                            {% else %}
+                                {{ warehouse.type }}
+                            {% endif %}
+                            {% if warehouse.location_name %}
+                                <span class="mx-2">|</span>
+                                <i class="fas fa-map-marker-alt"></i> {{ warehouse.location_name }}
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <div class="btn-group">
+                    {% if current_user.role in ['admin'] %}
+                    <a href="{{ url_for('warehouses.edit_warehouse', id=warehouse.id) }}" class="btn btn-light">
+                        <i class="fas fa-edit"></i> {{ get_translation('common', 'edit') }}
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('warehouses.warehouse_stocks', id=warehouse.id) }}" class="btn btn-light">
+                        <i class="fas fa-boxes"></i> {{ get_translation('warehouses', 'stocks') }}
+                    </a>
+                    <button type="button" class="btn btn-light" onclick="window.print()">
+                        <i class="fas fa-print"></i> {{ get_translation('common', 'print') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--secondary-color), #2980b9);">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="stat-label">{{ get_translation('warehouses', 'items_count') }}</h6>
+                            <h2 class="stat-value">{{ stats.total_items or 0 }}</h2>
+                        </div>
+                        <i class="fas fa-boxes fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--success-color), #218838);">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="stat-label">{{ get_translation('warehouses', 'total_quantity') }}</h6>
+                            <h2 class="stat-value">{{ format_number(stats.total_quantity or 0) }}</h2>
+                        </div>
+                        <i class="fas fa-cubes fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--warning-color), #e0a800);">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="stat-label">{{ get_translation('warehouses', 'low_stock') }}</h6>
+                            <h2 class="stat-value">{{ stats.low_stock_items or 0 }}</h2>
+                        </div>
+                        <i class="fas fa-exclamation-triangle fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--info-color), #138496);">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="stat-label">{{ get_translation('warehouses', 'expiring') }}</h6>
+                            <h2 class="stat-value">{{ stats.expiring_items or 0 }}</h2>
+                        </div>
+                        <i class="fas fa-clock fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Левая колонка - информация о складе -->
+        <div class="col-md-4">
+            <!-- Контактная информация -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-address-card"></i> {{ get_translation('warehouses', 'contact_info') }}</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="120">{{ get_translation('warehouses', 'address') }}:</th>
+                            <td>
+                                {% if warehouse.address %}
+                                    {{ warehouse.address }}
+                                {% elif warehouse.location_name %}
+                                    {{ warehouse.location_name }}
+                                {% else %}
+                                    <span class="text-muted">{{ get_translation('common', 'not_specified') }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% if warehouse.building %}
+                        <tr>
+                            <th>{{ get_translation('warehouses', 'building') }}:</th>
+                            <td>{{ warehouse.building }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if warehouse.room %}
+                        <tr>
+                            <th>{{ get_translation('warehouses', 'room') }}:</th>
+                            <td>{{ warehouse.room }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if warehouse.phone %}
+                        <tr>
+                            <th>{{ get_translation('common', 'phone') }}:</th>
+                            <td>{{ warehouse.phone }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if warehouse.email %}
+                        <tr>
+                            <th>{{ get_translation('common', 'email') }}:</th>
+                            <td>{{ warehouse.email }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if warehouse.working_hours %}
+                        <tr>
+                            <th>{{ get_translation('warehouses', 'working_hours') }}:</th>
+                            <td>{{ warehouse.working_hours }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+
+            <!-- Заведующий складом -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-user-tie"></i> {{ get_translation('warehouses', 'manager') }}</h5>
+                </div>
+                <div class="card-body">
+                    {% if warehouse.manager_name %}
+                        <h5>{{ warehouse.manager_name }}</h5>
+                        <p class="text-muted mb-0">{{ warehouse.manager_position or get_translation('warehouses', 'storekeeper') }}</p>
+                        {% if warehouse.manager_phone %}
+                            <small><i class="fas fa-phone"></i> {{ warehouse.manager_phone }}</small>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-muted mb-0">{{ get_translation('warehouses', 'manager_not_assigned') }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Мета-информация -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-clock"></i> {{ get_translation('warehouses', 'info') }}</h5>
+                </div>
+                <div class="card-body">
+                    <small class="text-muted d-block mb-2">
+                        <i class="fas fa-calendar-alt"></i> {{ get_translation('common', 'created_at') }}: {{ format_datetime(warehouse.created_at) }}
+                    </small>
+                    <small class="text-muted d-block">
+                        <i class="fas fa-database"></i> ID: {{ warehouse.id }}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая колонка - остатки и ячейки -->
+        <div class="col-md-8">
+            <!-- Навигационные вкладки -->
+            <ul class="nav nav-tabs mb-4" id="warehouseTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="stocks-tab" data-bs-toggle="tab" data-bs-target="#stocks" type="button">
+                        <i class="fas fa-boxes"></i> {{ get_translation('warehouses', 'stocks') }}
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="bins-tab" data-bs-toggle="tab" data-bs-target="#bins" type="button">
+                        <i class="fas fa-th"></i> {{ get_translation('storage_bins', 'title') }}
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="movements-tab" data-bs-toggle="tab" data-bs-target="#movements" type="button">
+                        <i class="fas fa-history"></i> {{ get_translation('warehouses', 'movements') }}
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- Вкладка: Остатки -->
+                <div class="tab-pane fade show active" id="stocks" role="tabpanel">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-boxes"></i> {{ get_translation('warehouses', 'current_stocks') }}</h5>
+                            <div>
+                                <a href="{{ url_for('documents.add_document', doc_type='receipt') }}?warehouse_id={{ warehouse.id }}" class="btn btn-sm btn-success">
+                                    <i class="fas fa-plus-circle"></i> {{ get_translation('documents', 'receipt') }}
+                                </a>
+                                <a href="{{ url_for('documents.add_document', doc_type='transfer') }}?from_warehouse_id={{ warehouse.id }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-exchange-alt"></i> {{ get_translation('documents', 'transfer') }}
+                                </a>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th>{{ get_translation('nomenclatures', 'name') }}</th>
+                                            <th>{{ get_translation('nomenclatures', 'sku') }}</th>
+                                            <th>{{ get_translation('batches', 'title') }}</th>
+                                            <th>{{ get_translation('batches', 'expiry_date') }}</th>
+                                            <th>{{ get_translation('storage_bins', 'title') }}</th>
+                                            <th class="text-end">{{ get_translation('common', 'quantity') }}</th>
+                                            <th class="text-end">{{ get_translation('stocks', 'available') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for stock in stocks %}
+                                        <tr>
+                                            <td>
+                                                <a href="{{ url_for('nomenclatures.edit_nomenclature', id=stock.nomenclature_id) }}">
+                                                    {{ stock.nomenclature_name }}
+                                                </a>
+                                            </td>
+                                            <td><span class="badge bg-secondary">{{ stock.sku }}</span></td>
+                                            <td>
+                                                {% if stock.batch_number %}
+                                                    <span class="badge bg-warning text-dark">{{ stock.batch_number }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">—</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if stock.expiry_date %}
+                                                    {{ format_date(stock.expiry_date) }}
+                                                    {% if stock.expiry_date < now().strftime('%Y-%m-%d') %}
+                                                        <span class="badge bg-danger">{{ get_translation('batches', 'expired') }}</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">—</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if stock.bin_code %}
+                                                    <span class="badge bg-info">{{ stock.bin_code }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">—</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-end fw-bold">{{ format_number(stock.quantity) }} {{ stock.unit }}</td>
+                                            <td class="text-end text-success fw-bold">{{ format_number(stock.available_quantity) }}</td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="7" class="text-center py-5 empty-state">
+                                                <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                                                <p class="text-muted">{{ get_translation('warehouses', 'no_stocks') }}</p>
+                                                <a href="{{ url_for('documents.add_document', doc_type='receipt') }}?warehouse_id={{ warehouse.id }}" class="btn btn-success btn-sm">
+                                                    <i class="fas fa-plus"></i> {{ get_translation('documents', 'receipt') }}
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Вкладка: Ячейки хранения -->
+                <div class="tab-pane fade" id="bins" role="tabpanel">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-th"></i> {{ get_translation('storage_bins', 'title') }}</h5>
+                            {% if current_user.role == 'admin' %}
+                            <button class="btn btn-sm btn-success" onclick="addStorageBin()">
+                                <i class="fas fa-plus"></i> {{ get_translation('storage_bins', 'add') }}
+                            </button>
+                            {% endif %}
+                        </div>
+                        <div class="card-body">
+                            {% if bins %}
+                                {% set zones = {} %}
+                                {% for bin in bins %}
+                                    {% set zone_name = bin.zone or 'Общая' %}
+                                    {% if zone_name not in zones %}
+                                        {% set _ = zones.update({zone_name: []}) %}
+                                    {% endif %}
+                                    {% set _ = zones[zone_name].append(bin) %}
+                                {% endfor %}
+                                
+                                {% for zone_name, zone_bins in zones.items() %}
+                                <div class="card mb-3 zone-card">
+                                    <div class="card-header bg-white py-2">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-layer-group"></i> {{ get_translation('storage_bins', 'zone') }} {{ zone_name }}
+                                            <span class="badge bg-secondary ms-2">{{ zone_bins|length }} {{ get_translation('storage_bins', 'title')|lower }}</span>
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="bin-grid">
+                                            {% for bin in zone_bins %}
+                                            <div class="bin-item {% if bin.is_occupied %}occupied{% endif %}" 
+                                                 onclick="viewBin({{ bin.id }})"
+                                                 title="{{ bin.code }} - {{ bin.name or get_translation('storage_bins', 'title') }}">
+                                                <strong>{{ bin.code }}</strong>
+                                                <br>
+                                                <small>{{ bin.occupied_quantity or 0 }} {{ get_translation('common', 'pcs_short') }}</small>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center py-5 empty-state">
+                                    <i class="fas fa-th fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted">{{ get_translation('storage_bins', 'not_configured') }}</p>
+                                    {% if current_user.role == 'admin' %}
+                                    <button class="btn btn-primary btn-sm" onclick="setupBins()">
+                                        <i class="fas fa-cog"></i> {{ get_translation('storage_bins', 'setup') }}
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Вкладка: Движения -->
+                <div class="tab-pane fade" id="movements" role="tabpanel">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="fas fa-history"></i> {{ get_translation('warehouses', 'recent_movements') }}</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th>{{ get_translation('common', 'date') }}</th>
+                                            <th>{{ get_translation('documents', 'document_number') }}</th>
+                                            <th>{{ get_translation('documents', 'document_type') }}</th>
+                                            <th>{{ get_translation('nomenclatures', 'name') }}</th>
+                                            <th>{{ get_translation('warehouses', 'direction') }}</th>
+                                            <th class="text-end">{{ get_translation('common', 'quantity') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for movement in movements %}
+                                        <tr>
+                                            <td>{{ format_date(movement.document_date) or format_datetime(movement.created_at)[:10] }}</td>
+                                            <td>
+                                                <a href="{{ url_for('documents.view_document', id=movement.document_id) }}">
+                                                    {{ movement.document_number }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                {% if movement.document_type == 'receipt' %}
+                                                    <span class="badge bg-success">{{ get_translation('documents', 'receipt') }}</span>
+                                                {% elif movement.document_type == 'write_off' %}
+                                                    <span class="badge bg-danger">{{ get_translation('documents', 'write_off') }}</span>
+                                                {% elif movement.document_type == 'transfer' %}
+                                                    <span class="badge bg-info">{{ get_translation('documents', 'transfer') }}</span>
+                                                {% elif movement.document_type == 'issuance' %}
+                                                    <span class="badge bg-primary">{{ get_translation('documents', 'issuance') }}</span>
+                                                {% elif movement.document_type == 'return' %}
+                                                    <span class="badge bg-warning">{{ get_translation('documents', 'return') }}</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">{{ movement.document_type }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ movement.nomenclature_name }}</td>
+                                            <td>
+                                                {% if movement.to_warehouse_id == warehouse.id %}
+                                                    <span class="text-success"><i class="fas fa-arrow-right"></i> {{ get_translation('warehouses', 'incoming') }}</span>
+                                                {% else %}
+                                                    <span class="text-danger"><i class="fas fa-arrow-left"></i> {{ get_translation('warehouses', 'outgoing') }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-end">{{ format_number(movement.quantity) }} {{ movement.unit }}</td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="6" class="text-center py-5 empty-state">
+                                                <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                                                <p class="text-muted">{{ get_translation('warehouses', 'no_movements') }}</p>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function addStorageBin() {
+    window.location.href = "{{ url_for('warehouses.add_storage_bin') }}?warehouse_id={{ warehouse.id }}";
+}
+
+function viewBin(binId) {
+    window.location.href = "{{ url_for('warehouses.view_storage_bin', id=binId) }}";
+}
+
+function setupBins() {
+    if (confirm('{{ get_translation("storage_bins", "setup_confirm") }}')) {
+        window.location.href = '/warehouses/{{ warehouse.id }}/setup_bins';
+    }
+}
+
+$(document).ready(function() {
+    // Сохраняем активную вкладку
+    $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
+        localStorage.setItem('activeWarehouseTab', $(e.target).attr('data-bs-target'));
+    });
+    
+    const activeTab = localStorage.getItem('activeWarehouseTab');
+    if (activeTab) {
+        $(`button[data-bs-target="${activeTab}"]`).tab('show');
+    }
+});
+</script>
+{% endblock %}

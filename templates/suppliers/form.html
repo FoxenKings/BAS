@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}{% if supplier %}{{ get_translation('suppliers', 'edit_title') }}{% else %}{{ get_translation('suppliers', 'new_title') }}{% endif %}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="px-3 pt-2">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home"></i> Главная</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('suppliers.suppliers_list') }}">Поставщики</a></li>
+        <li class="breadcrumb-item active">{% if supplier %}Редактировать{% else %}Создать{% endif %}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-{% if supplier %}edit{% else %}plus{% endif %}"></i>
+            {% if supplier %}{{ get_translation('suppliers', 'edit_title') }}{% else %}{{ get_translation('suppliers', 'new_title') }}{% endif %}
+        </h1>
+        <a href="{{ url_for('suppliers.suppliers_list') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> {{ get_translation('common', 'back') }}
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" id="supplierForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="code" class="form-label">{{ get_translation('common', 'code') }} <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="code" name="code" 
+                               value="{{ supplier.code if supplier else '' }}" required 
+                               placeholder="SUP-001">
+                        <div class="form-text">{{ get_translation('suppliers', 'code_help') }}</div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="name" class="form-label">{{ get_translation('common', 'name') }} <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="name" name="name" 
+                               value="{{ supplier.name if supplier else '' }}" required
+                               placeholder="ООО Ромашка">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="full_name" class="form-label">{{ get_translation('suppliers', 'full_name') }}</label>
+                    <input type="text" class="form-control" id="full_name" name="full_name" 
+                           value="{{ supplier.full_name if supplier else '' }}"
+                           placeholder="Общество с ограниченной ответственностью Ромашка">
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="inn" class="form-label">{{ get_translation('suppliers', 'inn') }}</label>
+                        <input type="text" class="form-control" id="inn" name="inn" 
+                               value="{{ supplier.inn if supplier else '' }}" 
+                               maxlength="12" pattern="[0-9]{10,12}"
+                               placeholder="10 или 12 цифр">
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="kpp" class="form-label">{{ get_translation('suppliers', 'kpp') }}</label>
+                        <input type="text" class="form-control" id="kpp" name="kpp" 
+                               value="{{ supplier.kpp if supplier else '' }}" 
+                               maxlength="9" pattern="[0-9]{9}"
+                               placeholder="9 цифр">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="contact_person" class="form-label">{{ get_translation('suppliers', 'contact_person') }}</label>
+                        <input type="text" class="form-control" id="contact_person" name="contact_person" 
+                               value="{{ supplier.contact_person if supplier else '' }}"
+                               placeholder="Иванов Иван Иванович">
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="phone" class="form-label">{{ get_translation('common', 'phone') }}</label>
+                        <input type="tel" class="form-control" id="phone" name="phone" 
+                               value="{{ supplier.phone if supplier else '' }}"
+                               placeholder="+7 (XXX) XXX-XX-XX">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="email" class="form-label">{{ get_translation('common', 'email') }}</label>
+                        <input type="email" class="form-control" id="email" name="email" 
+                               value="{{ supplier.email if supplier else '' }}"
+                               placeholder="supplier@example.com">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="address" class="form-label">{{ get_translation('suppliers', 'address') }}</label>
+                    <textarea class="form-control" id="address" name="address" rows="2" 
+                              placeholder="г. Москва, ул. Примерная, д. 1">{{ supplier.address if supplier else '' }}</textarea>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ get_translation('common', 'status') }}</label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+                                   {% if not supplier or supplier.is_active %}checked{% endif %}>
+                            <label class="form-check-label" for="is_active">{{ get_translation('common', 'active') }}</label>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> {{ get_translation('common', 'save') }}
+                </button>
+                <a href="{{ url_for('suppliers.suppliers_list') }}" class="btn btn-secondary ms-2">
+                    <i class="fas fa-times"></i> {{ get_translation('common', 'cancel') }}
+                </a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Валидация ИНН (только цифры)
+document.getElementById('inn')?.addEventListener('input', function(e) {
+    this.value = this.value.replace(/[^0-9]/g, '');
+});
+
+// Валидация КПП (только цифры)
+document.getElementById('kpp')?.addEventListener('input', function(e) {
+    this.value = this.value.replace(/[^0-9]/g, '');
+});
+
+// Форматирование телефона (упрощенное)
+document.getElementById('phone')?.addEventListener('input', function(e) {
+    // Просто удаляем все не-цифры, кроме +
+    let value = this.value.replace(/[^\d+]/g, '');
+    this.value = value;
+});
+</script>
+
+<style>
+.form-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card-body {
+    padding: 2rem;
+}
+
+hr {
+    margin: 1.5rem 0;
+    opacity: 0.2;
+}
+</style>
+{% endblock %}

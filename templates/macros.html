@@ -1,0 +1,167 @@
+{# ============================================================
+   macros.html — Переиспользуемые компоненты Jinja2
+
+   Использование:
+     {% from 'macros.html' import stat_card, pagination, status_badge,
+                                    empty_state, confirm_btn, search_input %}
+   ============================================================ #}
+
+
+{# ── Карточка статистики (KPI) ─────────────────────────────────────────── #}
+{% macro stat_card(title, value, icon, color='primary', url=None, trend=None, trend_delta=None) %}
+<div class="col">
+  <div class="card stat-card stat-{{ color }} h-100">
+    <div class="card-body d-flex justify-content-between align-items-start">
+      <div>
+        <div class="text-muted small mb-1">{{ title }}</div>
+        <div class="stat-value">
+          {% if url %}<a href="{{ url }}" class="text-decoration-none text-dark">{{ value }}</a>{% else %}{{ value }}{% endif %}
+        </div>
+        {% if trend is not none %}
+          <div class="mt-1 small">
+            {% if trend == 'up' %}
+              <span class="text-success"><i class="fas fa-arrow-up"></i> +{{ trend_delta }}</span>
+            {% elif trend == 'down' %}
+              <span class="text-danger"><i class="fas fa-arrow-down"></i> {{ trend_delta }}</span>
+            {% else %}
+              <span class="text-muted"><i class="fas fa-minus"></i></span>
+            {% endif %}
+            <span class="text-muted">за 7 дней</span>
+          </div>
+        {% endif %}
+      </div>
+      <div class="stat-icon bg-{{ color }} bg-opacity-10 text-{{ color }}">
+        <i class="{{ icon }}"></i>
+      </div>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+
+{# ── Пагинация ─────────────────────────────────────────────────────────── #}
+{% macro pagination(pager, endpoint) %}
+{% if pager and pager.pages > 1 %}
+<nav aria-label="Пагинация">
+  <ul class="pagination justify-content-center mb-0">
+
+    <li class="page-item {% if not pager.has_prev %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for(endpoint, page=pager.prev_page or 1, **kwargs) }}" aria-label="Назад">
+        <i class="fas fa-chevron-left"></i>
+      </a>
+    </li>
+
+    {% for p in pager.iter_pages() %}
+      {% if p %}
+        <li class="page-item {% if p == pager.page %}active{% endif %}">
+          <a class="page-link" href="{{ url_for(endpoint, page=p, **kwargs) }}">{{ p }}</a>
+        </li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+      {% endif %}
+    {% endfor %}
+
+    <li class="page-item {% if not pager.has_next %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for(endpoint, page=pager.next_page or pager.pages, **kwargs) }}" aria-label="Вперёд">
+        <i class="fas fa-chevron-right"></i>
+      </a>
+    </li>
+
+  </ul>
+</nav>
+{% endif %}
+{% endmacro %}
+
+
+{# ── Статусный бейдж ───────────────────────────────────────────────────── #}
+{% macro status_badge(status) %}
+{% set map = {
+  'in_stock':   ('success', 'fas fa-check-circle', 'На складе'),
+  'in_use':     ('primary', 'fas fa-user',          'В использовании'),
+  'repair':     ('warning', 'fas fa-tools',          'Ремонт'),
+  'written_off':('secondary','fas fa-ban',           'Списан'),
+  'lost':       ('danger',  'fas fa-question',       'Утерян'),
+  'draft':      ('secondary','fas fa-pencil-alt',    'Черновик'),
+  'posted':     ('success', 'fas fa-check',          'Проведён'),
+  'cancelled':  ('danger',  'fas fa-times',          'Отменён'),
+} %}
+{% set cfg = map.get(status, ('secondary', 'fas fa-circle', status)) %}
+<span class="badge bg-{{ cfg[0] }} badge-animated">
+  <i class="{{ cfg[1] }} me-1"></i>{{ cfg[2] }}
+</span>
+{% endmacro %}
+
+
+{# ── Пустое состояние таблицы ─────────────────────────────────────────── #}
+{% macro empty_state(title='Нет данных', subtitle='', icon='fas fa-inbox', btn_url=None, btn_text='Добавить') %}
+<div class="text-center py-5">
+  <i class="{{ icon }} fa-3x text-muted mb-3"></i>
+  <h5 class="text-muted">{{ title }}</h5>
+  {% if subtitle %}<p class="text-muted small">{{ subtitle }}</p>{% endif %}
+  {% if btn_url %}
+    <a href="{{ btn_url }}" class="btn btn-primary btn-sm mt-2">
+      <i class="fas fa-plus me-1"></i>{{ btn_text }}
+    </a>
+  {% endif %}
+</div>
+{% endmacro %}
+
+
+{# ── Кнопка с подтверждением (SweetAlert2) ────────────────────────────── #}
+{% macro confirm_btn(url, label='Удалить', icon='fas fa-trash', color='danger',
+                     title='Подтвердите действие', text='Это действие необратимо.',
+                     method='POST', csrf_token='') %}
+<form action="{{ url }}" method="{{ method }}" class="d-inline"
+      onsubmit="return confirm('{{ text }}')">
+  {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% endif %}
+  <button type="submit" class="btn btn-{{ color }} btn-sm"
+          data-bs-toggle="tooltip" title="{{ label }}">
+    <i class="{{ icon }}"></i>
+    <span class="d-none d-md-inline ms-1">{{ label }}</span>
+  </button>
+</form>
+{% endmacro %}
+
+
+{# ── Поле поиска ──────────────────────────────────────────────────────── #}
+{% macro search_input(value='', placeholder='Поиск...', name='q', id='searchInput') %}
+<div class="search-input-group">
+  <i class="fas fa-search search-icon"></i>
+  <input type="text"
+         class="form-control"
+         id="{{ id }}"
+         name="{{ name }}"
+         value="{{ value }}"
+         placeholder="{{ placeholder }}"
+         autocomplete="off">
+</div>
+{% endmacro %}
+
+
+{# ── Заголовок страницы с breadcrumb ─────────────────────────────────── #}
+{% macro page_header(title, breadcrumbs=[], btn_url=None, btn_label='Добавить', btn_icon='fas fa-plus') %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-0">{{ title }}</h4>
+    {% if breadcrumbs %}
+    <nav aria-label="breadcrumb" class="mt-1">
+      <ol class="breadcrumb breadcrumb-sm mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard.dashboard') }}">Главная</a></li>
+        {% for crumb in breadcrumbs %}
+          {% if loop.last %}
+            <li class="breadcrumb-item active">{{ crumb.label }}</li>
+          {% else %}
+            <li class="breadcrumb-item"><a href="{{ crumb.url }}">{{ crumb.label }}</a></li>
+          {% endif %}
+        {% endfor %}
+      </ol>
+    </nav>
+    {% endif %}
+  </div>
+  {% if btn_url %}
+  <a href="{{ btn_url }}" class="btn btn-primary">
+    <i class="{{ btn_icon }} me-1"></i>{{ btn_label }}
+  </a>
+  {% endif %}
+</div>
+{% endmacro %}

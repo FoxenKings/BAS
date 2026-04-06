@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_translation('reports', 'inactive_items') }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-pause-circle"></i> {{ get_translation('reports', 'inactive_items') }}
+        </h1>
+        <div>
+            <button class="btn btn-success" onclick="exportToExcel()">
+                <i class="fas fa-file-excel"></i> {{ get_translation('common', 'export') }}
+            </button>
+            <a href="{{ url_for('reports.reports') }}" class="btn btn-primary">
+                <i class="fas fa-arrow-left"></i> {{ get_translation('reports', 'back_to_reports') }}
+            </a>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-filter"></i> {{ get_translation('reports', 'inactivity_period') }}
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <label for="days" class="form-label">{{ get_translation('reports', 'not_used_more_than') }}</label>
+                    <select class="form-select" id="days" name="days">
+                        <option value="30" {% if request.args.get('days') == '30' %}selected{% endif %}>30 {{ get_translation('reports', 'days') }}</option>
+                        <option value="60" {% if request.args.get('days') == '60' %}selected{% endif %}>60 {{ get_translation('reports', 'days') }}</option>
+                        <option value="90" {% if request.args.get('days') == '90' %}selected{% endif %}>90 {{ get_translation('reports', 'days') }}</option>
+                        <option value="180" {% if request.args.get('days') == '180' %}selected{% endif %}>180 {{ get_translation('reports', 'days') }}</option>
+                        <option value="365" {% if request.args.get('days') == '365' %}selected{% endif %}>1 {{ get_translation('reports', 'year') }}</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="category_id" class="form-label">{{ get_translation('categories', 'title') }}</label>
+                    <select class="form-select" id="category_id" name="category_id">
+                        <option value="">{{ get_translation('reports', 'all_categories') }}</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if request.args.get('category_id')|int == cat.id %}selected{% endif %}>
+                            {{ cat.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> {{ get_translation('common', 'apply') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Сводка -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--warning-color), #e0a800);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('reports', 'inactive_items') }}</h6>
+                    <h3 class="stat-value">{{ summary.total_inactive }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--info-color), #138496);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('reports', 'with_stock') }}</h6>
+                    <h3 class="stat-value">{{ summary.with_stock }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--danger-color), #c82333);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('reports', 'stock_amount') }}</h6>
+                    <h3 class="stat-value">{{ format_currency(summary.total_amount) }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица неактивных позиций -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-table"></i> {{ get_translation('reports', 'inactive_items_list') }}
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="inactiveTable">
+                    <thead>
+                        <tr>
+                            <th>{{ get_translation('nomenclatures', 'sku') }}</th>
+                            <th>{{ get_translation('nomenclatures', 'name') }}</th>
+                            <th>{{ get_translation('categories', 'title') }}</th>
+                            <th>{{ get_translation('reports', 'last_movement') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'days_inactive') }}</th>
+                            <th>{{ get_translation('reports', 'last_movement_type') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'current_stock') }}</th>
+                            <th class="text-end">{{ get_translation('reports', 'stock_amount') }}</th>
+                            <th>{{ get_translation('common', 'actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in inactive %}
+                        <tr>
+                            <td><code>{{ item.sku }}</code></td>
+                            <td><a href="{{ url_for('nomenclatures.edit_nomenclature', id=item.id) }}">{{ item.name }}</a></td>
+                            <td>{{ item.category_name }}</td>
+                            <td>{{ format_date(item.last_movement_date) or '—' }}</td>
+                            <td class="text-end">
+                                <span class="badge bg-{{ 'danger' if item.days_inactive > 90 else 'warning' }}">
+                                    {{ item.days_inactive }} {{ get_translation('reports', 'days') }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if item.last_movement_type == 'receipt' %}
+                                <span class="badge bg-success">{{ get_document_type_text('receipt') }}</span>
+                                {% elif item.last_movement_type == 'issuance' %}
+                                <span class="badge bg-primary">{{ get_document_type_text('issuance') }}</span>
+                                {% elif item.last_movement_type == 'transfer' %}
+                                <span class="badge bg-info">{{ get_document_type_text('transfer') }}</span>
+                                {% else %}
+                                <span class="badge bg-secondary">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">{{ format_number(item.current_stock) }}</td>
+                            <td class="text-end">{{ format_currency(item.stock_amount) }}</td>
+                            <td>
+                                <a href="{{ url_for('nomenclatures.edit_nomenclature', id=item.id) }}" class="btn btn-sm btn-outline-warning" title="{{ get_translation('common', 'edit') }}">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#inactiveTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/ru.json'
+        },
+        order: [[4, 'desc']],
+        pageLength: 25
+    });
+});
+
+function exportToExcel() {
+    var table = document.getElementById('inactiveTable');
+    var wb = XLSX.utils.table_to_book(table, {sheet: "{{ get_translation('reports', 'inactive_items') }}"});
+    XLSX.writeFile(wb, "inactive_{{ now().strftime('%Y%m%d') }}.xlsx");
+}
+</script>
+{% endblock %}

@@ -1,0 +1,61 @@
+<!-- 404.html -->
+{% extends "base.html" %}
+
+{% block title %}404 - Страница не найдена{% endblock %}
+
+{% block content %}
+<div class="container text-center py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="error-page">
+                <div class="mb-4">
+                    <i class="fas fa-tag text-primary" style="font-size: 80px; opacity: 0.2;"></i>
+                    <i class="fas fa-cube text-success mx-3" style="font-size: 80px; opacity: 0.2;"></i>
+                    <i class="fas fa-boxes text-info" style="font-size: 80px; opacity: 0.2;"></i>
+                </div>
+                <h1 class="display-1 text-primary fw-bold">404</h1>
+                <h2 class="mb-4">Страница не найдена</h2>
+                <p class="lead text-muted mb-4">
+                    Запрашиваемая страница не существует в системе номенклатурного учета.
+                    <br>Возможно, она была перемещена в новую архитектуру.
+                </p>
+                
+                <div class="alert alert-info d-inline-block mb-4">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Новая архитектура:</strong> Все объекты теперь находятся в справочнике номенклатуры
+                </div>
+                
+                <div class="mt-5">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg me-3">
+                        <i class="fas fa-home"></i> На главную
+                    </a>
+                    <a href="{{ url_for('nomenclatures.nomenclatures_list') }}" class="btn btn-success btn-lg me-3">
+                        <i class="fas fa-tag"></i> К номенклатуре
+                    </a>
+                    <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg">
+                        <i class="fas fa-arrow-left"></i> Назад
+                    </a>
+                </div>
+            </div>
+            
+            <div class="mt-5 text-muted">
+                <small>
+                    <i class="fas fa-database"></i> Номенклатурный учет v7.0
+                    <span class="mx-2">|</span>
+                    <i class="fas fa-cube"></i> Инвентарный / Партионный / Количественный
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-page {
+    animation: fadeIn 0.5s;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+{% endblock %}

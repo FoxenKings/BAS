@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_translation('documents', 'view_title', number=document.document_number) }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-file-alt"></i> 
+            {{ get_translation('documents', 'document') }} №{{ document.document_number }}
+            <span class="badge bg-{{ get_document_type_color(document.document_type) }} ms-2">
+                {{ get_document_type_text(document.document_type) }}
+            </span>
+        </h1>
+        <div>
+            {% if document.status == 'draft' %}
+            <a href="{{ url_for('documents.edit_document', id=document.id) }}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> {{ get_translation('common', 'edit') }}
+            </a>
+            <button class="btn btn-success" onclick="postDocument({{ document.id }})">
+                <i class="fas fa-check"></i> {{ get_translation('documents', 'post') }}
+            </button>
+            {% endif %}
+            <a href="{{ url_for('documents.documents_list') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> {{ get_translation('common', 'back') }}
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-info-circle"></i> {{ get_translation('common', 'basic_info') }}
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 30%;">{{ get_translation('documents', 'number') }}:</th>
+                            <td><strong>{{ document.document_number }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('common', 'date') }}:</th>
+                            <td>{{ format_date(document.document_date) }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('common', 'type') }}:</th>
+                            <td>
+                                <span class="badge bg-{{ get_document_type_color(document.document_type) }}">
+                                    {{ get_document_type_text(document.document_type) }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('common', 'status') }}:</th>
+                            <td>
+                                {% if document.status == 'draft' %}
+                                <span class="badge bg-secondary">{{ get_translation('documents', 'draft') }}</span>
+                                {% elif document.status == 'posted' %}
+                                <span class="badge bg-success">{{ get_translation('documents', 'posted') }}</span>
+                                {% elif document.status == 'cancelled' %}
+                                <span class="badge bg-danger">{{ get_translation('documents', 'cancelled') }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-exchange-alt"></i> {{ get_translation('documents', 'movement_info') }}
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        {% if document.supplier_name %}
+                        <tr>
+                            <th style="width: 30%;">{{ get_translation('suppliers', 'title') }}:</th>
+                            <td>{{ document.supplier_name }}</td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if document.employee_name %}
+                        <tr>
+                            <th>{{ get_translation('employees', 'title') }}:</th>
+                            <td>{{ document.employee_name }}</td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if document.from_warehouse_name %}
+                        <tr>
+                            <th>{{ get_translation('warehouses', 'from') }}:</th>
+                            <td>{{ document.from_warehouse_name }}</td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if document.to_warehouse_name %}
+                        <tr>
+                            <th>{{ get_translation('warehouses', 'to') }}:</th>
+                            <td>{{ document.to_warehouse_name }}</td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if document.reason %}
+                        <tr>
+                            <th>{{ get_translation('common', 'reason') }}:</th>
+                            <td>{{ document.reason }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-list"></i> {{ get_translation('documents', 'items') }}
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>{{ get_translation('nomenclatures', 'name') }}</th>
+                                    <th>{{ get_translation('common', 'sku') }}</th>
+                                    <th class="text-end">{{ get_translation('common', 'quantity') }}</th>
+                                    <th class="text-end">{{ get_translation('common', 'price') }}</th>
+                                    <th class="text-end">{{ get_translation('common', 'amount') }}</th>
+                                    {% if document.document_type == 'batch' %}
+                                    <th>{{ get_translation('batches', 'batch_number') }}</th>
+                                    {% endif %}
+                                    {% if document.document_type == 'individual' %}
+                                    <th>{{ get_translation('instances', 'inventory_number') }}</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in items %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ item.nomenclature_name }}</td>
+                                    <td><code>{{ item.sku }}</code></td>
+                                    <td class="text-end">{{ format_number(item.quantity) }}</td>
+                                    <td class="text-end">{{ format_currency(item.price) }}</td>
+                                    <td class="text-end">{{ format_currency(item.amount or (item.quantity * item.price)) }}</td>
+                                    {% if document.document_type == 'batch' %}
+                                    <td>{{ item.batch_number or '—' }}</td>
+                                    {% endif %}
+                                    {% if document.document_type == 'individual' %}
+                                    <td>{{ item.inventory_number or '—' }}</td>
+                                    {% endif %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-info">
+                                    <th colspan="5" class="text-end">{{ get_translation('common', 'total') }}:</th>
+                                    <th class="text-end">{{ format_currency(document.total_amount or 0) }}</th>
+                                    {% if document.document_type in ['batch', 'individual'] %}
+                                    <th></th>
+                                    {% endif %}
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if document.notes %}
+        <div class="col-12">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-sticky-note"></i> {{ get_translation('common', 'notes') }}
+                </div>
+                <div class="card-body">
+                    {{ document.notes }}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-history"></i> {{ get_translation('common', 'audit_info') }}
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted">
+                                <strong>{{ get_translation('common', 'created_by') }}:</strong> 
+                                {{ document.created_by_name or '—' }}
+                            </small>
+                            <br>
+                            <small class="text-muted">
+                                <strong>{{ get_translation('common', 'created_at') }}:</strong> 
+                                {{ format_datetime(document.created_at) }}
+                            </small>
+                        </div>
+                        <div class="col-md-6">
+                            {% if document.posted_by %}
+                            <small class="text-muted">
+                                <strong>{{ get_translation('documents', 'posted_by') }}:</strong> 
+                                {{ document.posted_by_name or '—' }}
+                            </small>
+                            <br>
+                            <small class="text-muted">
+                                <strong>{{ get_translation('documents', 'posted_at') }}:</strong> 
+                                {{ format_datetime(document.posted_at) }}
+                            </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function postDocument(id) {
+    Swal.fire({
+        title: '{{ get_translation('documents', 'confirm_post') }}',
+        text: '{{ get_translation('documents', 'confirm_post_message') }}',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '{{ get_translation('common', 'yes') }}',
+        cancelButtonText: '{{ get_translation('common', 'cancel') }}'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/documents/${id}/post`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '{{ get_translation('common', 'success') }}',
+                        text: data.message,
+                        timer: 1500
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: '{{ get_translation('common', 'error') }}',
+                        text: data.error
+                    });
+                }
+            });
+        }
+    });
+}
+</script>
+{% endblock %}

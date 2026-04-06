@@ -1,0 +1,841 @@
+{% extends "base.html" %}
+{% from 'macros.html' import empty_state, status_badge %}
+
+{% block title %}Панель управления{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+    <!-- Заголовок -->
+    <div class="page-header">
+        <div class="page-title">
+            <i class="fas fa-tachometer-alt text-primary"></i>
+            Панель управления
+        </div>
+        <div class="page-actions">
+            <span class="text-muted text-sm">
+                <i class="fas fa-clock me-1"></i>{{ now().strftime('%d.%m.%Y, %H:%M') }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Приветствие (не виджет — всегда видно) -->
+    <div class="alert border-0 mb-4" style="background: linear-gradient(135deg,#eff6ff,#f0fdf4); border-left: 4px solid #3498db !important;">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:48px;height:48px;background:linear-gradient(135deg,#6366f1,#4f46e5);border-radius:12px;display:flex;align-items:center;justify-content:center;">
+                <i class="fas fa-user-tie text-white fs-5"></i>
+            </div>
+            <div>
+                <div class="fw-semibold" style="font-size:1rem;">
+                    Добро пожаловать, {{ current_user.full_name or current_user.username }}!
+                </div>
+                <div class="text-muted text-sm">
+                    Роль: <span class="badge badge-{{ 'asset' if current_user.role == 'admin' else 'material' }}">{{ current_user.role }}</span>
+                    &nbsp;·&nbsp; Система управления активами v11
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Виджет-контейнер ═══ -->
+    <div id="dashboardWidgetContainer">
+
+        {# ── KPI: основные показатели ─────────────────────────── #}
+        <div class="dash-widget mb-4" data-widget-id="kpi_primary">
+            <div class="dash-widget-handle" title="Перетащить виджет">
+                <i class="fas fa-grip-horizontal"></i>
+                <span>KPI: основные показатели</span>
+            </div>
+            {%- set t = trends or {} -%}
+            <div class="row g-3">
+                <div class="col-xl-3 col-md-6">
+                    <div class="card stat-card-v2 scv2-indigo h-100">
+                        <div class="card-body">
+                            <div class="scv2-label text-white">Номенклатура</div>
+                            <div class="scv2-value text-white">{{ stats.nomenclatures.total }}</div>
+                            <div class="scv2-footer text-white d-flex align-items-center gap-2 flex-wrap">
+                                <span><i class="fas fa-layer-group me-1"></i>позиций в каталоге</span>
+                                {% if t.nom_new_week %}
+                                <span class="scv2-badge"><i class="fas fa-plus fa-xs me-1"></i>{{ t.nom_new_week }} за нед.</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <i class="fas fa-cubes scv2-bg-icon"></i>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6">
+                    <div class="card stat-card-v2 scv2-blue h-100">
+                        <div class="card-body">
+                            <div class="scv2-label text-white">Экземпляры</div>
+                            <div class="scv2-value text-white">{{ stats.instances.total }}</div>
+                            <div class="scv2-footer text-white d-flex align-items-center gap-2 flex-wrap">
+                                <span><i class="fas fa-cube me-1"></i>единиц учёта</span>
+                                {% if t.inst_new_week %}
+                                <span class="scv2-badge"><i class="fas fa-plus fa-xs me-1"></i>{{ t.inst_new_week }} за нед.</span>
+                                {% endif %}
+                            </div>
+                            {% if stats.instances.total > 0 %}
+                            <div class="mt-2 d-flex gap-1" style="height:4px;border-radius:2px;overflow:hidden;">
+                                {% set ti = stats.instances.total %}
+                                <div style="width:{{ ((stats.instances.in_stock / ti)*100)|round(0) }}%;background:rgba(255,255,255,0.8);" title="На складе: {{ stats.instances.in_stock }}"></div>
+                                <div style="width:{{ ((stats.instances.in_use   / ti)*100)|round(0) }}%;background:rgba(255,255,255,0.5);" title="В использовании: {{ stats.instances.in_use }}"></div>
+                                <div style="width:{{ ((stats.instances.repair   / ti)*100)|round(0) }}%;background:rgba(255,220,0,0.7);" title="Ремонт: {{ stats.instances.repair }}"></div>
+                                <div style="flex:1;background:rgba(255,255,255,0.2);" title="Списан: {{ stats.instances.written_off }}"></div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <i class="fas fa-cube scv2-bg-icon"></i>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6">
+                    <div class="card stat-card-v2 scv2-green h-100">
+                        <div class="card-body">
+                            <div class="scv2-label text-white">Документы</div>
+                            <div class="scv2-value text-white">{{ stats.documents.total }}</div>
+                            <div class="scv2-footer text-white d-flex align-items-center gap-2 flex-wrap">
+                                <span><i class="fas fa-file-alt me-1"></i>всего записей</span>
+                                {% if t.doc_trend == 'up' %}
+                                <span class="scv2-badge"><i class="fas fa-arrow-up fa-xs me-1"></i>+{{ t.doc_delta }} нед.</span>
+                                {% elif t.doc_trend == 'down' %}
+                                <span class="scv2-badge" style="background:rgba(255,80,80,0.25);">{{ t.doc_delta }} нед.</span>
+                                {% elif t.doc_week %}
+                                <span class="scv2-badge">{{ t.doc_week }} нед.</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <i class="fas fa-file-alt scv2-bg-icon"></i>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6">
+                    <div class="card stat-card-v2 scv2-purple h-100">
+                        <div class="card-body">
+                            <div class="scv2-label text-white">Категории</div>
+                            <div class="scv2-value text-white">{{ stats.categories.total }}</div>
+                            <div class="scv2-footer text-white">
+                                <i class="fas fa-sitemap me-1"></i>в иерархии
+                            </div>
+                        </div>
+                        <i class="fas fa-sitemap scv2-bg-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /kpi_primary -->
+
+        {# ── KPI: склады / люди ───────────────────────────────── #}
+        <div class="dash-widget mb-4" data-widget-id="kpi_secondary">
+            <div class="dash-widget-handle" title="Перетащить виджет">
+                <i class="fas fa-grip-horizontal"></i>
+                <span>KPI: склады / люди</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-xl-4 col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <div style="width:50px;height:50px;background:linear-gradient(135deg,#14b8a6,#0d9488);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-warehouse text-white fs-5"></i>
+                            </div>
+                            <div>
+                                <div class="fw-semibold fs-4 lh-1">{{ stats.warehouses.total }}</div>
+                                <div class="text-muted text-sm">Активных складов</div>
+                                <a href="{{ url_for('warehouses.warehouses_list') }}" class="text-sm text-primary text-decoration-none">
+                                    Перейти <i class="fas fa-arrow-right fa-xs"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-4 col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <div style="width:50px;height:50px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-users text-white fs-5"></i>
+                            </div>
+                            <div>
+                                <div class="fw-semibold fs-4 lh-1">{{ stats.employees.total }}</div>
+                                <div class="text-muted text-sm">Сотрудников в системе</div>
+                                <a href="{{ url_for('employees.employees_list') }}" class="text-sm text-primary text-decoration-none">
+                                    Перейти <i class="fas fa-arrow-right fa-xs"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-4 col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <div style="width:50px;height:50px;background:linear-gradient(135deg,#ef4444,#dc2626);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-truck text-white fs-5"></i>
+                            </div>
+                            <div>
+                                <div class="fw-semibold fs-4 lh-1">{{ stats.suppliers.total }}</div>
+                                <div class="text-muted text-sm">Активных поставщиков</div>
+                                <a href="{{ url_for('suppliers.suppliers_list') }}" class="text-sm text-primary text-decoration-none">
+                                    Перейти <i class="fas fa-arrow-right fa-xs"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /kpi_secondary -->
+
+        {# ── Быстрые действия ─────────────────────────────────── #}
+        <div class="dash-widget mb-4" data-widget-id="quick_actions">
+            <div class="dash-widget-handle" title="Перетащить виджет">
+                <i class="fas fa-grip-horizontal"></i>
+                <span>Быстрые действия</span>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-bolt"></i> Быстрые действия
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-xl-2 col-md-4 col-6">
+                            <a href="{{ url_for('nomenclatures.add_nomenclature') }}" class="quick-action-card">
+                                <div class="qa-icon" style="background:#ede9fe;">
+                                    <i class="fas fa-plus" style="color:#5b21b6;"></i>
+                                </div>
+                                <div class="qa-label">Новая номенклатура</div>
+                                <div class="qa-desc">Добавить позицию</div>
+                            </a>
+                        </div>
+                        <div class="col-xl-2 col-md-4 col-6">
+                            <a href="{{ url_for('documents.documents_list') }}?type=receipt" class="quick-action-card">
+                                <div class="qa-icon" style="background:#dcfce7;">
+                                    <i class="fas fa-file-import" style="color:#15803d;"></i>
+                                </div>
+                                <div class="qa-label">Поступление</div>
+                                <div class="qa-desc">Создать документ</div>
+                            </a>
+                        </div>
+                        <div class="col-xl-2 col-md-4 col-6">
+                            <a href="{{ url_for('instances.instances_list') }}" class="quick-action-card">
+                                <div class="qa-icon" style="background:#dbeafe;">
+                                    <i class="fas fa-cube" style="color:#1d4ed8;"></i>
+                                </div>
+                                <div class="qa-label">Экземпляры</div>
+                                <div class="qa-desc">Просмотр учёта</div>
+                            </a>
+                        </div>
+                        <div class="col-xl-2 col-md-4 col-6">
+                            <a href="{{ url_for('nomenclatures.nomenclatures_list') }}" class="quick-action-card">
+                                <div class="qa-icon" style="background:#fef3c7;">
+                                    <i class="fas fa-search" style="color:#92400e;"></i>
+                                </div>
+                                <div class="qa-label">Номенклатура</div>
+                                <div class="qa-desc">Поиск и фильтры</div>
+                            </a>
+                        </div>
+                        <div class="col-xl-2 col-md-4 col-6">
+                            <a href="{{ url_for('reports.report_stock_balance') }}" class="quick-action-card">
+                                <div class="qa-icon" style="background:#f0fdf4;">
+                                    <i class="fas fa-chart-bar" style="color:#166534;"></i>
+                                </div>
+                                <div class="qa-label">Отчёты</div>
+                                <div class="qa-desc">Остатки и движение</div>
+                            </a>
+                        </div>
+                        <div class="col-xl-2 col-md-4 col-6">
+                            <a href="{{ url_for('inventory.inventory_list') }}" class="quick-action-card">
+                                <div class="qa-icon" style="background:#fff7ed;">
+                                    <i class="fas fa-clipboard-check" style="color:#c2410c;"></i>
+                                </div>
+                                <div class="qa-label">Инвентаризация</div>
+                                <div class="qa-desc">Проверка остатков</div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /quick_actions -->
+
+        {# ── График движения за 30 дней ───────────────────────── #}
+        <div class="dash-widget mb-4" data-widget-id="chart_movement">
+            <div class="dash-widget-handle" title="Перетащить виджет">
+                <i class="fas fa-grip-horizontal"></i>
+                <span>График движения (30 дней)</span>
+            </div>
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-chart-line text-primary me-1"></i> Движение документов за 30 дней</span>
+                    <span class="text-muted text-sm">поступления / выдачи</span>
+                </div>
+                <div class="card-body" style="min-height:220px;">
+                    {% if chart_movement.labels %}
+                    <canvas id="chartMovement" style="max-height:220px;"></canvas>
+                    {% else %}
+                    {{ empty_state('Нет данных за 30 дней', 'Нет проведённых документов', 'fas fa-chart-line') }}
+                    {% endif %}
+                </div>
+            </div>
+        </div><!-- /chart_movement -->
+
+        {# ── Типы документов + Статусы экземпляров ────────────── #}
+        <div class="dash-widget mb-4" data-widget-id="chart_doctypes">
+            <div class="dash-widget-handle" title="Перетащить виджет">
+                <i class="fas fa-grip-horizontal"></i>
+                <span>Типы документов</span>
+            </div>
+            <div class="row g-3">
+                <!-- Pie: типы документов -->
+                <div class="col-xl-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <i class="fas fa-chart-pie text-warning me-1"></i> Документы по типам
+                        </div>
+                        <div class="card-body" style="min-height:220px;">
+                            {% if chart_doctypes.labels %}
+                            <div class="d-flex justify-content-center">
+                                <canvas id="chartDoctypes" style="max-height:180px; max-width:180px;"></canvas>
+                            </div>
+                            {% else %}
+                            {{ empty_state('Нет проведённых документов', '', 'fas fa-chart-pie') }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Doughnut: статусы экземпляров -->
+                <div class="col-xl-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <i class="fas fa-chart-donut text-info me-1"></i> Экземпляры по статусам
+                        </div>
+                        <div class="card-body" style="min-height:220px;">
+                            {% set total_inst = chart_instances.data | sum %}
+                            {% if total_inst > 0 %}
+                            <div class="d-flex justify-content-center">
+                                <canvas id="chartInstances" style="max-height:160px; max-width:160px;"></canvas>
+                            </div>
+                            <div class="mt-3">
+                                {% set inst_statuses = [
+                                    ('На складе',       'success', stats.instances.in_stock),
+                                    ('В использовании', 'primary', stats.instances.in_use),
+                                    ('Ремонт',          'warning', stats.instances.repair),
+                                    ('Списан',          'danger',  stats.instances.written_off),
+                                ] %}
+                                {% for label, color, count in inst_statuses %}
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="text-sm text-muted">{{ label }}</span>
+                                        <span class="fw-semibold text-sm">{{ count }}</span>
+                                    </div>
+                                    <div class="progress" style="height:5px;border-radius:3px;">
+                                        <div class="progress-bar bg-{{ color }}" style="width:{{ ((count / total_inst) * 100) | round(1) }}%;"></div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            {{ empty_state('Нет данных об экземплярах', '', 'fas fa-cube') }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /chart_doctypes -->
+
+        {# ── Остатки по складам ───────────────────────────────── #}
+        <div class="dash-widget mb-4" data-widget-id="chart_warehouse">
+            <div class="dash-widget-handle" title="Перетащить виджет">
+                <i class="fas fa-grip-horizontal"></i>
+                <span>Остатки по складам</span>
+            </div>
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-warehouse text-teal me-1"></i> Складские остатки (топ-10)</span>
+                    <a href="{{ url_for('reports.report_stock_balance') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-external-link-alt fa-xs me-1"></i>Полный отчёт
+                    </a>
+                </div>
+                <div class="card-body" style="min-height:220px;">
+                    {% if chart_warehouse_stock.labels %}
+                    <canvas id="chartWarehouseStock" style="max-height:220px;"></canvas>
+                    {% else %}
+                    {{ empty_state('Нет данных об остатках на складах', '', 'fas fa-warehouse') }}
+                    {% endif %}
+                </div>
+            </div>
+        </div><!-- /chart_warehouse -->
+
+        {# ── Топ-5 / Критические остатки ─────────────────────── #}
+        <div class="dash-widget mb-4" data-widget-id="top5_lowstock">
+            <div class="dash-widget-handle" title="Перетащить виджет">
+                <i class="fas fa-grip-horizontal"></i>
+                <span>Топ-5 / Критические остатки</span>
+            </div>
+            <div class="row g-3">
+                <!-- Топ-5 по остатку -->
+                <div class="col-xl-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <i class="fas fa-trophy text-warning me-1"></i> Топ-5 по складскому остатку
+                        </div>
+                        <div class="card-body" style="min-height:200px;">
+                            {% if chart_top5.labels %}
+                            <canvas id="chartTop5" style="max-height:180px;"></canvas>
+                            {% else %}
+                            {{ empty_state('Нет данных об остатках', '', 'fas fa-boxes') }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Критические остатки -->
+                <div class="col-xl-6">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-exclamation-triangle text-danger me-1"></i> Критические остатки</span>
+                            {% if low_stock_items %}
+                            <span class="badge bg-danger">{{ low_stock_items|length }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="card-body p-0">
+                            {% if low_stock_items %}
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead><tr>
+                                        <th class="ps-3">Номенклатура</th>
+                                        <th class="text-center">Остаток</th>
+                                        <th class="text-center">Минимум</th>
+                                    </tr></thead>
+                                    <tbody>
+                                        {% for item in low_stock_items %}
+                                        <tr class="{{ 'table-danger' if item.current_stock <= 0 else 'table-warning' }}">
+                                            <td class="ps-3">
+                                                <div class="fw-semibold text-sm">{{ item.name | truncate(30) }}</div>
+                                                {% if item.sku %}<div class="text-code text-xs">{{ item.sku }}</div>{% endif %}
+                                            </td>
+                                            <td class="text-center fw-bold text-sm {{ 'text-danger' if item.current_stock <= 0 else 'text-warning' }}">
+                                                {{ item.current_stock | int }}
+                                            </td>
+                                            <td class="text-center text-sm text-muted">{{ item.min_stock | int }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            {{ empty_state('Все позиции в норме', '', 'fas fa-check-circle') }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /top5_lowstock -->
+
+        {# ── Истекающие партии ────────────────────────────────── #}
+        <div class="dash-widget mb-4" data-widget-id="expiring_batches">
+            <div class="dash-widget-handle" title="Перетащить виджет">
+                <i class="fas fa-grip-horizontal"></i>
+                <span>Истекающие партии</span>
+            </div>
+            {% if expiring_batches %}
+            <div class="card border-warning">
+                <div class="card-header d-flex justify-content-between align-items-center bg-warning bg-opacity-10">
+                    <span><i class="fas fa-calendar-times text-warning me-1"></i> Истекающие партии (ближайшие 30 дней)</span>
+                    <span class="badge bg-warning text-dark">{{ expiring_batches|length }}</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead><tr>
+                                <th class="ps-3">Номенклатура</th>
+                                <th>Партия</th>
+                                <th class="text-center">Срок годности</th>
+                                <th class="text-center">Дней осталось</th>
+                            </tr></thead>
+                            <tbody>
+                                {% for batch in expiring_batches %}
+                                <tr class="{{ 'table-danger' if batch.days_left <= 0 else ('table-warning' if batch.days_left <= 7 else '') }}">
+                                    <td class="ps-3 fw-semibold text-sm">{{ batch.nomenclature_name | truncate(40) }}</td>
+                                    <td class="text-code text-sm">{{ batch.batch_number }}</td>
+                                    <td class="text-center text-sm">{{ batch.expiry_date }}</td>
+                                    <td class="text-center fw-bold {{ 'text-danger' if batch.days_left <= 0 else ('text-warning' if batch.days_left <= 7 else 'text-success') }}">
+                                        {{ batch.days_left if batch.days_left > 0 else 'Просрочено' }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-calendar-times text-warning me-1"></i> Истекающие партии
+                </div>
+                <div class="card-body">
+                    {{ empty_state('Нет партий с истекающим сроком', 'Партий со сроком ≤30 дней не обнаружено', 'fas fa-calendar-check') }}
+                </div>
+            </div>
+            {% endif %}
+        </div><!-- /expiring_batches -->
+
+        {# ── Черновики + Активность ───────────────────────────── #}
+        <div class="dash-widget mb-4" data-widget-id="drafts_activity">
+            <div class="dash-widget-handle" title="Перетащить виджет">
+                <i class="fas fa-grip-horizontal"></i>
+                <span>Черновики + Активность</span>
+            </div>
+            <div class="row g-3">
+                <!-- Черновики -->
+                <div class="col-xl-6">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-file-edit text-secondary me-1"></i> Документы-черновики</span>
+                            {% if draft_documents %}
+                            <span class="badge bg-secondary">{{ draft_documents|length }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="card-body p-0">
+                            {% if draft_documents %}
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead><tr>
+                                        <th class="ps-3">Номер</th>
+                                        <th>Тип</th>
+                                        <th>Дата</th>
+                                        <th></th>
+                                    </tr></thead>
+                                    <tbody>
+                                        {% for doc in draft_documents %}
+                                        <tr>
+                                            <td class="ps-3"><span class="text-code text-sm">{{ doc.document_number }}</span></td>
+                                            <td>{{ status_badge('draft') }}</td>
+                                            <td class="text-sm text-muted">{{ format_date(doc.document_date) if doc.document_date else '—' }}</td>
+                                            <td>
+                                                <a href="{{ url_for('documents.view_document', id=doc.id) }}" class="btn-action btn-action-view">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            {{ empty_state('Незавершённых документов нет', '', 'fas fa-check-circle') }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Лента активности -->
+                <div class="col-xl-6">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-history text-primary me-1"></i> Последние действия</span>
+                            {% if recent_activity %}
+                            <span class="badge bg-secondary">{{ recent_activity|length }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="card-body p-0">
+                            {% if recent_activity %}
+                            <div class="activity-feed">
+                                {% for entry in recent_activity %}
+                                <div class="activity-item">
+                                    <div class="activity-icon-wrap">
+                                        {% if entry.action in ['create', 'add', 'receipt', 'import'] %}
+                                        <span class="activity-dot bg-success"><i class="fas fa-plus"></i></span>
+                                        {% elif entry.action in ['edit', 'update', 'modify'] %}
+                                        <span class="activity-dot bg-primary"><i class="fas fa-pen"></i></span>
+                                        {% elif entry.action in ['delete', 'remove', 'write_off'] %}
+                                        <span class="activity-dot bg-danger"><i class="fas fa-trash"></i></span>
+                                        {% elif entry.action in ['login', 'logout'] %}
+                                        <span class="activity-dot bg-info"><i class="fas fa-sign-in-alt"></i></span>
+                                        {% else %}
+                                        <span class="activity-dot bg-secondary"><i class="fas fa-circle"></i></span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="activity-body">
+                                        <div class="activity-title">
+                                            <span class="fw-semibold text-sm">{{ entry.username or 'Система' }}</span>
+                                            <span class="text-muted text-xs ms-1">· {{ entry.action }}</span>
+                                            {% if entry.entity_type %}
+                                            <span class="badge bg-light text-dark border ms-1" style="font-size:0.65rem;">{{ entry.entity_type }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="text-muted" style="font-size:0.72rem;">
+                                            {{ entry.created_at[:16] if entry.created_at else '—' }}
+                                            {% if entry.entity_id %}· #{{ entry.entity_id }}{% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            {{ empty_state('Нет записей активности', '', 'fas fa-history') }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /drafts_activity -->
+
+    </div><!-- /#dashboardWidgetContainer -->
+</div><!-- /.container-fluid -->
+
+<!-- ═══ Панель настройки дашборда ═══ -->
+<div id="dashConfigBackdrop" class="dash-config-backdrop"></div>
+<div id="dashConfigPanel" class="dash-config-panel">
+    <div class="dash-config-panel-header d-flex align-items-center justify-content-between">
+        <h6><i class="fas fa-sliders-h me-2 text-primary"></i>Настройка дашборда</h6>
+        <button id="dashConfigClose" class="btn btn-sm btn-ghost p-1" title="Закрыть">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="dash-config-panel-body">
+        <div class="text-muted text-sm mb-3">
+            <i class="fas fa-info-circle me-1 text-primary"></i>
+            Перетащите виджеты для изменения порядка. Переключатель — видимость на дашборде.
+        </div>
+        <div id="widgetToggleList"></div>
+    </div>
+    <div class="dash-config-panel-footer">
+        <button id="dashConfigReset" class="btn btn-sm btn-outline-secondary w-100">
+            <i class="fas fa-undo me-1"></i>Сбросить к настройкам по умолчанию
+        </button>
+    </div>
+</div>
+
+<!-- FAB кнопка настройки -->
+<button id="dashConfigBtn" class="dash-config-btn" title="Настройка дашборда">
+    <i class="fas fa-cog"></i>
+</button>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Утилита: читаем CSS-переменные текущей темы ─────────────
+function getThemeVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function getThemeChartColors() {
+    return [1,2,3,4,5].map(i => getThemeVar('--th-chart-' + i)).filter(Boolean);
+}
+function getThemeGridColor() {
+    return getThemeVar('--th-chart-grid') || 'rgba(0,0,0,0.06)';
+}
+function getThemeLabelColor() {
+    return getThemeVar('--th-chart-label') || '#64748b';
+}
+
+// Глобальный реестр Chart-инстанций для перекраски при смене темы
+window._dashCharts = {};
+
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.font.size = 12;
+
+{% if chart_movement.labels %}
+// ── График движения документов ──────────────────────────────
+try {
+    var chartMovement = new Chart(document.getElementById('chartMovement'), {
+        type: 'line',
+        data: {
+            labels: {{ chart_movement.labels | tojson }},
+            datasets: [
+                {
+                    label: 'Поступления',
+                    data: {{ chart_movement.receipts | tojson }},
+                    borderColor: getThemeVar('--th-chart-2') || '#22c55e',
+                    backgroundColor: (getThemeVar('--th-chart-2') || '#22c55e').replace(')', ',0.1)').replace('rgb', 'rgba'),
+                    borderWidth: 2,
+                    tension: 0.35,
+                    fill: true,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                },
+                {
+                    label: 'Выдачи',
+                    data: {{ chart_movement.issuances | tojson }},
+                    borderColor: getThemeVar('--th-chart-1') || '#6366f1',
+                    backgroundColor: (getThemeVar('--th-chart-1') || '#6366f1').replace(')', ',0.1)').replace('rgb', 'rgba'),
+                    borderWidth: 2,
+                    tension: 0.35,
+                    fill: true,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            animation: { duration: 400 },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { color: getThemeLabelColor(), font: { size: 12 }, boxWidth: 14, padding: 16 }
+                },
+                tooltip: { mode: 'index', intersect: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1, color: getThemeLabelColor() },
+                    grid: { color: getThemeGridColor() }
+                },
+                x: {
+                    ticks: { maxTicksLimit: 10, color: getThemeLabelColor() },
+                    grid: { color: getThemeGridColor() }
+                }
+            }
+        }
+    });
+    window._dashCharts['chartMovement'] = chartMovement;
+} catch (err) { console.error('chartMovement:', err); }
+{% endif %}
+
+{% if chart_doctypes.labels %}
+// ── Pie: типы документов ─────────────────────────────────────
+try {
+    var chartDoctypes = new Chart(document.getElementById('chartDoctypes'), {
+        type: 'pie',
+        data: {
+            labels: {{ chart_doctypes.labels | tojson }},
+            datasets: [{
+                data: {{ chart_doctypes.data | tojson }},
+                backgroundColor: getThemeChartColors(),
+                borderWidth: 2,
+                borderColor: getThemeVar('--th-card-bg') || '#fff',
+                hoverOffset: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            animation: { duration: 500 },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { font: { size: 11 }, boxWidth: 12, color: getThemeLabelColor(), padding: 12 }
+                }
+            }
+        }
+    });
+    window._dashCharts['chartDoctypes'] = chartDoctypes;
+} catch (err) { console.error('chartDoctypes:', err); }
+{% endif %}
+
+{% set total_inst = chart_instances.data | sum %}
+{% if total_inst > 0 %}
+// ── Doughnut: статусы экземпляров ───────────────────────────
+try {
+    var chartInstances = new Chart(document.getElementById('chartInstances'), {
+        type: 'doughnut',
+        data: {
+            labels: {{ chart_instances.labels | tojson }},
+            datasets: [{
+                data: {{ chart_instances.data | tojson }},
+                backgroundColor: ['#22c55e','#6366f1','#f59e0b','#ef4444'],
+                borderWidth: 2,
+                borderColor: getThemeVar('--th-card-bg') || '#fff',
+                hoverOffset: 5,
+            }]
+        },
+        options: {
+            responsive: true,
+            cutout: '68%',
+            animation: { duration: 500 },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { font: { size: 11 }, boxWidth: 12, color: getThemeLabelColor(), padding: 10 }
+                }
+            }
+        }
+    });
+    window._dashCharts['chartInstances'] = chartInstances;
+} catch (err) { console.error('chartInstances:', err); }
+{% endif %}
+
+{% if chart_top5.labels %}
+// ── Bar: топ-5 номенклатур ──────────────────────────────────
+try {
+    var chartTop5 = new Chart(document.getElementById('chartTop5'), {
+        type: 'bar',
+        data: {
+            labels: {{ chart_top5.labels | tojson }},
+            datasets: [{
+                label: 'Остаток',
+                data: {{ chart_top5.data | tojson }},
+                backgroundColor: getThemeChartColors(),
+                borderRadius: 6,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: true,
+            animation: { duration: 400 },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: {
+                    label: function(ctx) { return ' ' + ctx.formattedValue + ' ед.'; }
+                }}
+            },
+            scales: {
+                x: { beginAtZero: true, ticks: { color: getThemeLabelColor() }, grid: { color: getThemeGridColor() } },
+                y: { ticks: { color: getThemeLabelColor() }, grid: { display: false } }
+            }
+        }
+    });
+    window._dashCharts['chartTop5'] = chartTop5;
+} catch (err) { console.error('chartTop5:', err); }
+{% endif %}
+
+{% if chart_warehouse_stock.labels %}
+// ── Bar: остатки по складам ─────────────────────────────────
+try {
+    var chartWarehouseStock = new Chart(document.getElementById('chartWarehouseStock'), {
+        type: 'bar',
+        data: {
+            labels: {{ chart_warehouse_stock.labels | tojson }},
+            datasets: [{
+                label: 'Количество единиц',
+                data: {{ chart_warehouse_stock.data | tojson }},
+                backgroundColor: getThemeVar('--th-chart-5') || 'rgba(20,184,166,0.75)',
+                borderColor: getThemeVar('--th-chart-5') || '#0d9488',
+                borderWidth: 1,
+                borderRadius: 6,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            animation: { duration: 400 },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: {
+                    label: function(ctx) { return ' ' + ctx.formattedValue + ' ед.'; }
+                }}
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: getThemeLabelColor() },
+                    grid: { color: getThemeGridColor() }
+                },
+                x: {
+                    ticks: { maxRotation: 30, minRotation: 0, color: getThemeLabelColor() },
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+    window._dashCharts['chartWarehouseStock'] = chartWarehouseStock;
+} catch (err) { console.error('chartWarehouseStock:', err); }
+{% endif %}
+</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

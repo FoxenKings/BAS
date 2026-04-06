@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+
+{% block title %}Уведомления{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="px-3 pt-2">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home"></i> Главная</a></li>
+        <li class="breadcrumb-item active">Уведомления</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-bell"></i> Уведомления
+        </h1>
+        <div>
+            <button class="btn btn-success" onclick="markAllAsRead()">
+                <i class="fas fa-check-double"></i> Отметить все как прочитанные
+            </button>
+            <button class="btn btn-danger" onclick="clearAll()">
+                <i class="fas fa-trash-alt"></i> Очистить все
+            </button>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stats-card" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                <div class="card-body">
+                    <div class="stat-value">{{ stats.total }}</div>
+                    <div class="stat-label">Всего уведомлений</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card" style="background: linear-gradient(135deg, #ffc107, #fd7e14);">
+                <div class="card-body">
+                    <div class="stat-value">{{ stats.unread }}</div>
+                    <div class="stat-label">Непрочитанных</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card" style="background: linear-gradient(135deg, #17a2b8, #0dcaf0);">
+                <div class="card-body">
+                    <div class="stat-value">{{ stats.expiring }}</div>
+                    <div class="stat-label">Истекает срок</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card" style="background: linear-gradient(135deg, #dc3545, #c82333);">
+                <div class="card-body">
+                    <div class="stat-value">{{ stats.expired }}</div>
+                    <div class="stat-label">Просрочено</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="card mb-4" id="filterCard">
+        <div class="card-header">
+            <i class="fas fa-filter"></i> Фильтры
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="type" class="form-label">Тип</label>
+                    <select class="form-select" id="type" name="type">
+                        <option value="">Все типы</option>
+                        <option value="expiry" {% if request.args.get('type') == 'expiry' %}selected{% endif %}>Истекает срок</option>
+                        <option value="expired" {% if request.args.get('type') == 'expired' %}selected{% endif %}>Просрочено</option>
+                        <option value="low_stock" {% if request.args.get('type') == 'low_stock' %}selected{% endif %}>Малый остаток</option>
+                        <option value="calibration" {% if request.args.get('type') == 'calibration' %}selected{% endif %}>Поверка</option>
+                        <option value="maintenance" {% if request.args.get('type') == 'maintenance' %}selected{% endif %}>Обслуживание</option>
+                        <option value="system" {% if request.args.get('type') == 'system' %}selected{% endif %}>Системные</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Статус</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">Все</option>
+                        <option value="unread" {% if request.args.get('status') == 'unread' %}selected{% endif %}>Непрочитанные</option>
+                        <option value="read" {% if request.args.get('status') == 'read' %}selected{% endif %}>Прочитанные</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="date_from" class="form-label">С даты</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from" 
+                           value="{{ request.args.get('date_from', '') }}">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Применить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Список уведомлений -->
+    <div class="card table-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <ul class="nav nav-tabs card-header-tabs">
+                <li class="nav-item">
+                    <a class="nav-link {% if not request.args.get('show') %}active{% endif %}" 
+                       href="{{ url_for('notifications.notifications_list') }}">Все</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.args.get('show') == 'unread' %}active{% endif %}" 
+                       href="{{ url_for('notifications.notifications_list', show='unread') }}">
+                        Непрочитанные <span class="badge bg-danger">{{ stats.unread }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.args.get('show') == 'expiring' %}active{% endif %}" 
+                       href="{{ url_for('notifications.notifications_list', show='expiring') }}">
+                        Истекают <span class="badge bg-warning">{{ stats.expiring }}</span>
+                    </a>
+                </li>
+            </ul>
+            <span class="text-muted text-sm">Всего: <strong>{{ stats.total }}</strong></span>
+        </div>
+        <div class="card-body">
+            {% if notifications %}
+                {% for notification in notifications %}
+                <div class="notification-item {{ 'unread' if not notification.is_read }} mb-3 p-3 border rounded 
+                      {% if notification.type == 'expired' %}border-danger
+                      {% elif notification.type == 'expiry' %}border-warning
+                      {% elif notification.type == 'low_stock' %}border-warning
+                      {% elif notification.type == 'calibration' %}border-info
+                      {% elif notification.type == 'maintenance' %}border-info
+                      {% else %}border-secondary{% endif %}"
+                     data-id="{{ notification.id }}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="d-flex">
+                            <div class="me-3">
+                                {% if notification.type == 'expired' %}
+                                <i class="fas fa-calendar-times fa-2x notification-icon-expired"></i>
+                                {% elif notification.type == 'expiry' %}
+                                <i class="fas fa-clock fa-2x notification-icon-expiry"></i>
+                                {% elif notification.type == 'low_stock' %}
+                                <i class="fas fa-exclamation-triangle fa-2x notification-icon-low-stock"></i>
+                                {% elif notification.type == 'calibration' %}
+                                <i class="fas fa-microscope fa-2x notification-icon-calibration"></i>
+                                {% elif notification.type == 'maintenance' %}
+                                <i class="fas fa-tools fa-2x notification-icon-maintenance"></i>
+                                {% else %}
+                                <i class="fas fa-info-circle fa-2x notification-icon-system"></i>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <h5 class="mb-1">
+                                    {{ notification.title }}
+                                    {% if not notification.is_read %}
+                                    <span class="badge bg-danger ms-2">Новое</span>
+                                    {% endif %}
+                                </h5>
+                                <p class="mb-1">{{ notification.message }}</p>
+                                <div class="text-muted small">
+                                    <i class="fas fa-clock"></i> {{ notification.created_at }}
+                                    {% if notification.expiry_date %}
+                                    <span class="separator mx-2">|</span>
+                                    <i class="fas fa-calendar"></i> Срок: {{ notification.expiry_date }}
+                                    {% endif %}
+                                </div>
+                                {% if notification.link %}
+                                <a href="{{ notification.link }}" class="btn btn-sm btn-action btn-outline-primary mt-2">
+                                    <i class="fas fa-eye"></i> Перейти
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="notification-actions">
+                            <button class="btn btn-sm btn-action btn-outline-secondary" onclick="markAsRead({{ notification.id }})"
+                                    {% if notification.is_read %}disabled{% endif %}>
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button class="btn btn-sm btn-action btn-outline-danger" onclick="deleteNotification({{ notification.id }})">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-bell-slash"></i>
+                    <h5>Нет уведомлений</h5>
+                    <p>У вас пока нет непрочитанных уведомлений</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Пагинация -->
+{% if pagination and pagination.pages > 1 %}
+<nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center">
+        <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
+            <a class="page-link" href="{{ url_for('notifications.notifications_list', page=pagination.prev_num, **request.args) }}" tabindex="-1">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+        </li>
+        
+        {% for page in pagination.iter_pages() %}
+            {% if page %}
+                <li class="page-item {{ 'active' if page == pagination.page }}">
+                    <a class="page-link" href="{{ url_for('notifications.notifications_list', page=page, **request.args) }}">{{ page }}</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+        
+        <li class="page-item {{ 'disabled' if not pagination.has_next }}">
+            <a class="page-link" href="{{ url_for('notifications.notifications_list', page=pagination.next_num, **request.args) }}">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
+
+<script>
+function markAsRead(id) {
+    fetch(`/notifications/${id}/read`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const item = document.querySelector(`.notification-item[data-id="${id}"]`);
+            item.classList.remove('unread');
+            const badge = item.querySelector('.badge.bg-danger');
+            if (badge) badge.remove();
+            item.querySelector('button[onclick*="markAsRead"]').disabled = true;
+            updateCounts();
+            toastr.success('Уведомление отмечено как прочитанное');
+        }
+    });
+}
+
+function markAllAsRead() {
+    Swal.fire({
+        title: 'Отметить все как прочитанные?',
+        text: 'Все уведомления будут отмечены как прочитанные',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Да, отметить',
+        cancelButtonText: 'Отмена'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('/notifications/read-all', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+        }
+    });
+}
+
+function deleteNotification(id) {
+    Swal.fire({
+        title: 'Удалить уведомление?',
+        text: 'Это действие нельзя отменить',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Да, удалить',
+        cancelButtonText: 'Отмена'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/notifications/${id}/delete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const item = document.querySelector(`.notification-item[data-id="${id}"]`);
+                    item.remove();
+                    updateCounts();
+                    toastr.success('Уведомление удалено');
+                    
+                    // Проверяем, остались ли уведомления
+                    if (document.querySelectorAll('.notification-item').length === 0) {
+                        location.reload();
+                    }
+                }
+            });
+        }
+    });
+}
+
+function clearAll() {
+    Swal.fire({
+        title: 'Очистить все уведомления?',
+        text: 'Все уведомления будут безвозвратно удалены',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Да, очистить',
+        cancelButtonText: 'Отмена'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('/notifications/clear-all', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+        }
+    });
+}
+
+function updateCounts() {
+    // Обновляем счетчики в реальном времени
+    fetch('/api/notifications/counts')
+        .then(response => response.json())
+        .then(data => {
+            // Обновляем цифры в статистике
+            document.querySelectorAll('.stats-card')[1].querySelector('.stat-value').textContent = data.unread;
+            document.querySelectorAll('.stats-card')[2].querySelector('.stat-value').textContent = data.expiring;
+            
+            // Обновляем бейдж в табе
+            const unreadTab = document.querySelector('a[href*="unread"] .badge');
+            if (unreadTab) {
+                unreadTab.textContent = data.unread;
+            }
+            
+            // Обновляем счетчик в шапке если есть
+            const headerBadge = document.querySelector('.notification-badge');
+            if (headerBadge) {
+                if (data.unread > 0) {
+                    headerBadge.textContent = data.unread;
+                    headerBadge.style.display = 'inline';
+                } else {
+                    headerBadge.style.display = 'none';
+                }
+            }
+        });
+}
+
+// Автоматическое обновление каждые 60 секунд
+setInterval(updateCounts, 60000);
+</script>
+{% endblock %}

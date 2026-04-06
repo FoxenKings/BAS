@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}{% if inventory %}{{ get_translation('inventories', 'edit_title') }}{% else %}{{ get_translation('inventories', 'new_title') }}{% endif %}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="px-3 pt-2">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home"></i> Главная</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('inventory.inventory_list') }}">Инвентаризации</a></li>
+        <li class="breadcrumb-item active">{% if inventory %}Редактировать{% else %}Создать{% endif %}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-{% if inventory %}edit{% else %}plus{% endif %}"></i>
+            {% if inventory %}{{ get_translation('inventories', 'edit_title') }}{% else %}{{ get_translation('inventories', 'new_title') }}{% endif %}
+        </h1>
+        <a href="{{ url_for('inventory.inventory_list') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> {{ get_translation('common', 'back') }}
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" id="inventoryForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="inventory_number" class="form-label">{{ get_translation('inventories', 'inventory_number') }}</label>
+                        <input type="text" class="form-control" id="inventory_number" name="inventory_number" 
+                               value="{{ inventory.inventory_number if inventory else '' }}"
+                               placeholder="{{ get_translation('inventories', 'inventory_number_placeholder') }}">
+                        <div class="form-text">{{ get_translation('inventories', 'inventory_number_help') }}</div>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="inventory_date" class="form-label">{{ get_translation('inventories', 'inventory_date') }} <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="inventory_date" name="inventory_date" 
+                               value="{{ inventory.inventory_date if inventory else now().strftime('%Y-%m-%d') }}" required>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="warehouse_id" class="form-label">{{ get_translation('warehouses', 'title') }} <span class="text-danger">*</span></label>
+                        <select class="form-select" id="warehouse_id" name="warehouse_id" required>
+                            <option value="">{{ get_translation('inventories', 'select_warehouse') }}</option>
+                            {% for w in warehouses %}
+                            <option value="{{ w.id }}" {% if inventory and inventory.warehouse_id == w.id %}selected{% endif %}>
+                                {{ w.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="inventory_type" class="form-label">{{ get_translation('inventories', 'inventory_type') }} <span class="text-danger">*</span></label>
+                        <select class="form-select" id="inventory_type" name="inventory_type" required>
+                            <option value="full" {% if not inventory or inventory.inventory_type == 'full' %}selected{% endif %}>{{ get_translation('inventories', 'type_full') }}</option>
+                            <option value="partial" {% if inventory and inventory.inventory_type == 'partial' %}selected{% endif %}>{{ get_translation('inventories', 'type_partial') }}</option>
+                            <option value="selective" {% if inventory and inventory.inventory_type == 'selective' %}selected{% endif %}>{{ get_translation('inventories', 'type_selective') }}</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="responsible_id" class="form-label">{{ get_translation('inventories', 'responsible') }}</label>
+                        <select class="form-select" id="responsible_id" name="responsible_id">
+                            <option value="">-- {{ get_translation('common', 'none') }} --</option>
+                            {% for emp in employees %}
+                            <option value="{{ emp.id }}" {% if inventory and inventory.responsible_id == emp.id %}selected{% endif %}>
+                                {{ emp.full_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Дополнительные поля для частичной инвентаризации -->
+                <div class="row" id="categoryFilter" style="display: none;">
+                    <div class="col-md-12 mb-3">
+                        <label for="category_id" class="form-label">{{ get_translation('categories', 'title') }}</label>
+                        <select class="form-select" id="category_id" name="category_id">
+                            <option value="">-- {{ get_translation('common', 'none') }} --</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat.id }}">{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">{{ get_translation('inventories', 'category_filter_help') }}</div>
+                    </div>
+                </div>
+
+                <!-- Ручной выбор позиций -->
+                <div class="row" id="itemsFilter" style="display: none;">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">{{ get_translation('inventories', 'select_items') }}</label>
+                        <select class="form-select" id="item_select" multiple size="5">
+                            {% for item in nomenclatures %}
+                            <option value="{{ item.id }}">{{ item.name }} ({{ item.sku }})</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">{{ get_translation('inventories', 'select_items_help') }}</div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="notes" class="form-label">{{ get_translation('inventories', 'notes') }}</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="3" 
+                              placeholder="{{ get_translation('inventories', 'notes_placeholder') }}">{{ inventory.notes if inventory else '' }}</textarea>
+                </div>
+
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>{{ get_translation('common', 'warning') }}!</strong> {{ get_translation('inventories', 'create_warning') }}
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> {{ get_translation('inventories', 'create') }}
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // Показываем/скрываем дополнительные поля в зависимости от типа
+    $('#inventory_type').change(function() {
+        var type = $(this).val();
+        
+        $('#categoryFilter, #itemsFilter').hide();
+        
+        if (type == 'partial') {
+            $('#categoryFilter').show();
+        } else if (type == 'selective') {
+            $('#itemsFilter').show();
+        }
+    });
+    
+    // Загружаем сохраненные значения при редактировании
+    $('#inventory_type').trigger('change');
+});
+</script>
+{% endblock %}

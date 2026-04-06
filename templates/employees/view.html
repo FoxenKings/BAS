@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}{{ employee.last_name }} {{ employee.first_name }} - {{ get_translation('employees', 'title') }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-user-circle"></i> {{ employee.last_name }} {{ employee.first_name }} {{ employee.middle_name or '' }}
+        </h1>
+        <div>
+            <a href="{{ url_for('employees.edit_employee', id=employee.id) }}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> {{ get_translation('common', 'edit') }}
+            </a>
+            <a href="{{ url_for('employees.employees_list') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> {{ get_translation('common', 'back') }}
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-id-card"></i> {{ get_translation('employees', 'basic_info') }}
+                </div>
+                <div class="card-body text-center">
+                    <div class="avatar-circle mx-auto mb-3 d-flex align-items-center justify-content-center" 
+                         style="width: 120px; height: 120px; background: linear-gradient(135deg, var(--secondary-color), var(--primary-color)); color: white; font-size: 3rem; border-radius: 50%;">
+                        {{ employee.first_name[:1] }}{{ employee.last_name[:1] }}
+                    </div>
+                    <h5>{{ employee.last_name }} {{ employee.first_name }} {{ employee.middle_name or '' }}</h5>
+                    <p class="text-muted">
+                        <span class="badge bg-{{ 'success' if employee.is_active else 'danger' }} fs-6">
+                            {{ get_translation('employees', 'working') if employee.is_active else get_translation('employees', 'dismissed') }}
+                        </span>
+                    </p>
+                    <p class="mb-1">
+                        <i class="fas fa-id-badge me-2"></i> {{ get_translation('employees', 'employee_number') }}: <code>{{ employee.employee_number }}</code>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-briefcase"></i> {{ get_translation('employees', 'work_info') }}
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 30%;">{{ get_translation('departments', 'title') }}:</th>
+                            <td>
+                                {% if employee.department_id %}
+                                <a href="{{ url_for('employees.department_detail', id=employee.department_id) }}">{{ employee.department_name }}</a>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('employees', 'position') }}:</th>
+                            <td>{{ employee.position or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('employees', 'manager') }}:</th>
+                            <td>{{ employee.manager_name or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('employees', 'hire_date') }}:</th>
+                            <td>{{ format_date(employee.hire_date) or '—' }}</td>
+                        </tr>
+                        {% if not employee.is_active %}
+                        <tr>
+                            <th>{{ get_translation('employees', 'dismissal_date') }}:</th>
+                            <td>{{ format_date(employee.dismissal_date) or '—' }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-address-card"></i> {{ get_translation('employees', 'contact_info') }}
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 30%;">{{ get_translation('employees', 'phone') }}:</th>
+                            <td>
+                                {% if employee.phone %}
+                                <a href="tel:{{ employee.phone }}">{{ employee.phone }}</a>
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('common', 'email') }}:</th>
+                            <td>
+                                {% if employee.email %}
+                                <a href="mailto:{{ employee.email }}">{{ employee.email }}</a>
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('employees', 'address') }}:</th>
+                            <td>{{ employee.address or '—' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-file-invoice"></i> {{ get_translation('employees', 'personal_info') }}
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 30%;">{{ get_translation('employees', 'birth_date') }}:</th>
+                            <td>{{ format_date(employee.birth_date) or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('employees', 'inn') }}:</th>
+                            <td>{{ employee.inn or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('employees', 'passport_data') }}:</th>
+                            <td>{{ employee.passport_data or '—' }}</td>
+                        </tr>
+                        {% if employee.notes %}
+                        <tr>
+                            <th>{{ get_translation('employees', 'notes') }}:</th>
+                            <td>{{ employee.notes }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-boxes"></i> {{ get_translation('employees', 'issued_property') }}
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>{{ get_translation('instances', 'inventory_number') }}</th>
+                                    <th>{{ get_translation('nomenclatures', 'name') }}</th>
+                                    <th>{{ get_translation('instances', 'issued_date') }}</th>
+                                    <th>{{ get_translation('instances', 'expected_return_date') }}</th>
+                                    <th>{{ get_translation('common', 'status') }}</th>
+                                    <th>{{ get_translation('common', 'actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for instance in issued_instances %}
+                                <tr>
+                                    <td><code>{{ instance.inventory_number }}</code></td>
+                                    <td>
+                                        <a href="{{ url_for('nomenclatures.edit_nomenclature', id=instance.nomenclature_id) }}">{{ instance.nomenclature_name }}</a>
+                                    </td>
+                                    <td>{{ format_date(instance.issued_date) or '—' }}</td>
+                                    <td>{{ format_date(instance.expected_return_date) or '—' }}</td>
+                                    <td>
+                                        {% if instance.expected_return_date and instance.expected_return_date < now().strftime('%Y-%m-d') %}
+                                        <span class="badge bg-danger">{{ get_translation('instances', 'overdue') }}</span>
+                                        {% else %}
+                                        <span class="badge bg-success">{{ get_translation('instances', 'on_time') }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if instance.inventory_number %}
+                                        <a href="{{ url_for('instances.view_instance', inventory_number=instance.inventory_number) }}"
+                                           class="btn btn-sm btn-outline-info" title="{{ get_translation('common', 'view') }}">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">
+                                        {{ get_translation('employees', 'no_property') }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

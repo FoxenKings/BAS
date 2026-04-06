@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_translation('inventories', 'results_title', number=inventory.inventory_number) }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-chart-pie"></i> {{ get_translation('inventories', 'results_title', number=inventory.inventory_number) }}
+        </h1>
+        <div>
+            <button class="btn btn-success" onclick="exportToExcel()">
+                <i class="fas fa-file-excel"></i> {{ get_translation('common', 'export') }}
+            </button>
+            {% if inventory.discrepancies > 0 %}
+            <button class="btn btn-warning" onclick="createAdjustment()">
+                <i class="fas fa-balance-scale"></i> {{ get_translation('inventories', 'create_adjustment') }}
+            </button>
+            {% endif %}
+            <a href="{{ url_for('inventory.inventory_list') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> {{ get_translation('common', 'back') }}
+            </a>
+        </div>
+    </div>
+
+    <!-- Сводка -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--primary-color), #1a252f);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('inventories', 'total_items') }}</h6>
+                    <h3 class="stat-value">{{ summary.total }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--success-color), #218838);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('inventories', 'matched') }}</h6>
+                    <h3 class="stat-value">{{ summary.matched }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--danger-color), #c82333);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('inventories', 'discrepancies') }}</h6>
+                    <h3 class="stat-value">{{ summary.discrepancies }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card" style="background: linear-gradient(135deg, var(--info-color), #138496);">
+                <div class="card-body text-white">
+                    <h6 class="stat-label">{{ get_translation('inventories', 'discrepancy_amount') }}</h6>
+                    <h3 class="stat-value">{{ format_currency(summary.total_amount) }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- График расхождений -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-chart-pie"></i> {{ get_translation('inventories', 'discrepancy_structure') }}
+                </div>
+                <div class="card-body">
+                    <canvas id="discrepancyChart" style="height: 300px;"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-chart-bar"></i> {{ get_translation('inventories', 'top_discrepancies') }}
+                </div>
+                <div class="card-body">
+                    <canvas id="topDiscrepanciesChart" style="height: 300px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица расхождений -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-list"></i> {{ get_translation('inventories', 'discrepancy_details') }}
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>{{ get_translation('nomenclatures', 'sku') }}</th>
+                            <th>{{ get_translation('nomenclatures', 'name') }}</th>
+                            <th>{{ get_translation('batches', 'title') }}</th>
+                            <th>{{ get_translation('storage_bins', 'title') }}</th>
+                            <th class="text-end">{{ get_translation('inventories', 'expected') }}</th>
+                            <th class="text-end">{{ get_translation('inventories', 'actual') }}</th>
+                            <th class="text-end">{{ get_translation('inventories', 'variance') }}</th>
+                            <th class="text-end">{{ get_translation('common', 'amount') }}</th>
+                            <th>{{ get_translation('common', 'actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr class="{{ 'table-success' if item.variance == 0 else 'table-danger' }}">
+                            <td><code>{{ item.sku }}</code></td>
+                            <td>
+                                <a href="{{ url_for('nomenclatures.edit_nomenclature', id=item.nomenclature_id) }}">{{ item.nomenclature_name }}</a>
+                            </td>
+                            <td>
+                                {% if item.batch_number %}
+                                <a href="{{ url_for('warehouses.edit_batch', id=item.batch_id) }}"><span class="badge bg-info">{{ item.batch_number }}</span></a>
+                                {% else %}—{% endif %}
+                            </td>
+                            <td>
+                                {% if item.storage_bin_id %}
+                                <a href="{{ url_for('warehouses.view_storage_bin', id=item.storage_bin_id) }}">{{ item.storage_bin_code or '—' }}</a>
+                                {% else %}—{% endif %}
+                            </td>
+                            <td class="text-end">{{ format_number(item.expected_quantity) }}</td>
+                            <td class="text-end">{{ format_number(item.actual_quantity) }}</td>
+                            <td class="text-end">
+                                {% if item.variance > 0 %}
+                                <span class="text-success">+{{ format_number(item.variance) }}</span>
+                                {% elif item.variance < 0 %}
+                                <span class="text-danger">{{ format_number(item.variance) }}</span>
+                                {% else %}
+                                0
+                                {% endif %}
+                            </td>
+                            <td class="text-end">{{ format_currency(item.variance * item.price) if item.price else format_currency(0) }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick="fixDiscrepancy({{ item.id }})" title="{{ get_translation('inventories', 'fix') }}">
+                                    <i class="fas fa-tools"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#resultsTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/ru.json'
+        },
+        order: [[6, 'desc']],
+        pageLength: 50
+    });
+
+    // Круговая диаграмма
+    try {
+    var ctxPie = document.getElementById('discrepancyChart').getContext('2d');
+    new Chart(ctxPie, {
+        type: 'pie',
+        data: {
+            labels: {{ chart_labels|tojson }},
+            datasets: [{
+                data: {{ chart_data|tojson }},
+                backgroundColor: ['#28a745', '#dc3545']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                title: {
+                    display: true,
+                    text: '{{ get_translation('inventories', 'discrepancy_structure') }}'
+                }
+            }
+        }
+    });
+
+    // Столбчатая диаграмма
+    var ctxBar = document.getElementById('topDiscrepanciesChart').getContext('2d');
+    new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+            labels: {{ top_labels|tojson }},
+            datasets: [{
+                label: '{{ get_translation('inventories', 'variance') }}',
+                data: {{ top_data|tojson }},
+                backgroundColor: '#dc3545'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '{{ get_translation('common', 'quantity') }}'
+                    }
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: '{{ get_translation('inventories', 'top_discrepancies') }}'
+                }
+            }
+        }
+    });
+    } catch(e) { console.error('Chart init error:', e); }
+});
+
+function exportToExcel() {
+    var table = document.getElementById('resultsTable');
+    var wb = XLSX.utils.table_to_book(table, {sheet: "{{ get_translation('inventories', 'results') }}"});
+    XLSX.writeFile(wb, "inventory_{{ inventory.inventory_number }}.xlsx");
+}
+
+function createAdjustment() {
+    Swal.fire({
+        title: '{{ get_translation('inventories', 'create_adjustment') }}',
+        html: `<p>{{ get_translation('inventories', 'create_adjustment_message') }}</p>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '{{ get_translation('common', 'yes') }}',
+        cancelButtonText: '{{ get_translation('common', 'cancel') }}'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = "{{ url_for('inventory.create_adjustment_from_inventory', id=inventory.id) }}";
+        }
+    });
+}
+
+function fixDiscrepancy(itemId) {
+    Swal.fire({
+        title: '{{ get_translation('inventories', 'fix_discrepancy') }}',
+        html: '<p>{{ get_translation('inventories', 'enter_actual') }}:</p>' +
+              '<input type="number" id="newQuantity" class="form-control" min="0" step="1">',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: '{{ get_translation('common', 'save') }}',
+        cancelButtonText: '{{ get_translation('common', 'cancel') }}'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            var newQuantity = $('#newQuantity').val();
+            if (newQuantity !== '') {
+                fetch(`/inventory/item/${itemId}/update`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ actual_quantity: newQuantity })
+                }).then(() => location.reload());
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

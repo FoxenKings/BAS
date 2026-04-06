@@ -1,0 +1,16 @@
+{
+  "name": "НПЦ БАС ТО — Управление номенклатурой",
+  "short_name": "Инвентарь",
+  "description": "Система учёта и управления номенклатурой НПЦ БАС ТО",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0d6efd",
+  "icons": [
+    {
+      "src": "/static/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

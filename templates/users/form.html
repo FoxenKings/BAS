@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}{% if user %}{{ get_translation('users', 'edit_title') }}{% else %}{{ get_translation('users', 'new_title') }}{% endif %}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="px-3 pt-2">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home"></i> Главная</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('admin.users_list') }}">Пользователи</a></li>
+        <li class="breadcrumb-item active">{% if user %}Редактировать{% else %}Создать{% endif %}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-{% if user %}edit{% else %}plus{% endif %}"></i>
+            {% if user %}{{ get_translation('users', 'edit_title') }}{% else %}{{ get_translation('users', 'new_title') }}{% endif %}
+        </h1>
+        <a href="{{ url_for('admin.users_list') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> {{ get_translation('common', 'back') }}
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" id="userForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="username" class="form-label">{{ get_translation('users', 'username') }} <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="username" name="username" 
+                               value="{{ user.username if user else '' }}" required 
+                               {{ 'readonly' if user }}
+                               placeholder="{{ get_translation('users', 'username_placeholder') }}">
+                        <div class="form-text">{{ get_translation('users', 'username_help') }}</div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="email" class="form-label">{{ get_translation('users', 'email') }}</label>
+                        <input type="email" class="form-control" id="email" name="email" 
+                               value="{{ user.email if user else '' }}"
+                               placeholder="{{ get_translation('users', 'email_placeholder') }}">
+                    </div>
+                </div>
+
+                {% if not user %}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="password" class="form-label">{{ get_translation('users', 'password') }} <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="password" name="password" required minlength="6"
+                               placeholder="{{ get_translation('users', 'password_placeholder') }}">
+                        <div class="form-text">{{ get_translation('users', 'password_help') }}</div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="confirm_password" class="form-label">{{ get_translation('users', 'confirm_password') }} <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required
+                               placeholder="{{ get_translation('users', 'confirm_password_placeholder') }}">
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="role" class="form-label">{{ get_translation('users', 'role') }} <span class="text-danger">*</span></label>
+                        <select class="form-select" id="role" name="role" required>
+                            <option value="user" {% if user and user.role == 'user' %}selected{% endif %}>{{ get_translation('users', 'role_user') }}</option>
+                            <option value="storekeeper" {% if user and user.role == 'storekeeper' %}selected{% endif %}>{{ get_translation('users', 'role_storekeeper') }}</option>
+                            <option value="accountant" {% if user and user.role == 'accountant' %}selected{% endif %}>{{ get_translation('users', 'role_accountant') }}</option>
+                            <option value="manager" {% if user and user.role == 'manager' %}selected{% endif %}>{{ get_translation('users', 'role_manager') }}</option>
+                            <option value="admin" {% if user and user.role == 'admin' %}selected{% endif %}>{{ get_translation('users', 'role_admin') }}</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="employee_id" class="form-label">{{ get_translation('users', 'employee') }}</label>
+                        <select class="form-select" id="employee_id" name="employee_id">
+                            <option value="">-- {{ get_translation('common', 'none') }} --</option>
+                            {% for emp in employees %}
+                            <option value="{{ emp.id }}" {% if user and user.employee_id == emp.id %}selected{% endif %}>
+                                {{ emp.full_name }} ({{ emp.employee_number }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">{{ get_translation('users', 'employee_help') }}</div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ get_translation('common', 'status') }}</label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+                                   {% if not user or user.is_active %}checked{% endif %}>
+                            <label class="form-check-label" for="is_active">{{ get_translation('common', 'active') }}</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>{{ get_translation('users', 'role_permissions') }}:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li><strong>{{ get_translation('users', 'role_admin') }}</strong> - {{ get_translation('users', 'role_admin_desc') }}</li>
+                        <li><strong>{{ get_translation('users', 'role_manager') }}</strong> - {{ get_translation('users', 'role_manager_desc') }}</li>
+                        <li><strong>{{ get_translation('users', 'role_storekeeper') }}</strong> - {{ get_translation('users', 'role_storekeeper_desc') }}</li>
+                        <li><strong>{{ get_translation('users', 'role_accountant') }}</strong> - {{ get_translation('users', 'role_accountant_desc') }}</li>
+                        <li><strong>{{ get_translation('users', 'role_user') }}</strong> - {{ get_translation('users', 'role_user_desc') }}</li>
+                    </ul>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> {{ get_translation('common', 'save') }}
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Валидация пароля
+document.getElementById('password')?.addEventListener('input', function() {
+    var confirm = document.getElementById('confirm_password');
+    if (confirm.value) {
+        if (this.value !== confirm.value) {
+            confirm.setCustomValidity('{{ get_translation("users", "passwords_not_match") }}');
+        } else {
+            confirm.setCustomValidity('');
+        }
+    }
+});
+
+document.getElementById('confirm_password')?.addEventListener('input', function() {
+    var password = document.getElementById('password');
+    if (this.value !== password.value) {
+        this.setCustomValidity('{{ get_translation("users", "passwords_not_match") }}');
+    } else {
+        this.setCustomValidity('');
+    }
+});
+</script>
+{% endblock %}

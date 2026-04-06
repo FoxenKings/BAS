@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_translation('reports', 'documents_by_period') }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-calendar-alt"></i> {{ get_translation('reports', 'documents_by_period') }}
+        </h1>
+        <div>
+            <button class="btn btn-success" onclick="exportToExcel()">
+                <i class="fas fa-file-excel"></i> {{ get_translation('common', 'export') }}
+            </button>
+            <a href="{{ url_for('reports.reports') }}" class="btn btn-primary">
+                <i class="fas fa-arrow-left"></i> {{ get_translation('reports', 'back_to_reports') }}
+            </a>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-filter"></i> {{ get_translation('reports', 'period_filter') }}
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="date_from" class="form-label">{{ get_translation('reports', 'date_from') }}</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from" 
+                           value="{{ request.args.get('date_from') or (now().replace(day=1)).strftime('%Y-%m-%d') }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="date_to" class="form-label">{{ get_translation('reports', 'date_to') }}</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to" 
+                           value="{{ request.args.get('date_to') or now().strftime('%Y-%m-%d') }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="status" class="form-label">{{ get_translation('common', 'status') }}</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">{{ get_translation('common', 'all') }}</option>
+                        <option value="draft" {% if request.args.get('status') == 'draft' %}selected{% endif %}>{{ get_status_text('draft') }}</option>
+                        <option value="posted" {% if request.args.get('status') == 'posted' %}selected{% endif %}>{{ get_status_text('posted') }}</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> {{ get_translation('reports', 'show') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Таблица документов -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-list"></i> {{ get_translation('reports', 'document_list') }}
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="documentsTable">
+                    <thead>
+                        <tr>
+                            <th>{{ get_translation('common', 'date') }}</th>
+                            <th>{{ get_translation('documents', 'document_number') }}</th>
+                            <th>{{ get_translation('documents', 'document_type') }}</th>
+                            <th>{{ get_translation('documents', 'from') }}</th>
+                            <th>{{ get_translation('documents', 'to') }}</th>
+                            <th class="text-end">{{ get_translation('common', 'amount') }}</th>
+                            <th>{{ get_translation('common', 'status') }}</th>
+                            <th>{{ get_translation('common', 'created_by') }}</th>
+                            <th>{{ get_translation('common', 'actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for doc in documents %}
+                        <tr>
+                            <td>{{ format_date(doc.document_date) }}</td>
+                            <td><code>{{ doc.document_number }}</code></td>
+                            <td>
+                                <span class="badge bg-{{ get_document_type_color(doc.document_type) }}">
+                                    {{ get_document_type_text(doc.document_type) }}
+                                </span>
+                            </td>
+                            <td>{{ doc.from_location or '—' }}</td>
+                            <td>{{ doc.to_location or '—' }}</td>
+                            <td class="text-end">{{ format_currency(doc.total_amount) }}</td>
+                            <td>
+                                <span class="badge bg-{{ get_status_color(doc.status) }}">
+                                    {{ get_status_text(doc.status) }}
+                                </span>
+                            </td>
+                            <td>{{ doc.created_by_name or '—' }}</td>
+                            <td>
+                                <a href="{{ url_for('documents.view_document', id=doc.id) }}" class="btn btn-sm btn-outline-info" title="{{ get_translation('common', 'view') }}">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th colspan="5" class="text-end">{{ get_translation('documents', 'total') }}</th>
+                            <th class="text-end">{{ format_currency(total_amount) }}</th>
+                            <th colspan="3"></th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#documentsTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/ru.json'
+        },
+        order: [[0, 'desc']],
+        pageLength: 50
+    });
+});
+
+function exportToExcel() {
+    var table = document.getElementById('documentsTable');
+    var wb = XLSX.utils.table_to_book(table, {sheet: "{{ get_translation('reports', 'documents_by_period') }}"});
+    XLSX.writeFile(wb, "documents_{{ now().strftime('%Y%m%d') }}.xlsx");
+}
+</script>
+{% endblock %}

@@ -1,0 +1,1304 @@
+{% extends "base.html" %}
+
+{% block title %}{{ nomenclature.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-cubes"></i> {{ nomenclature.name }}
+        </h1>
+        <div>
+            <a href="{{ url_for('nomenclatures.edit_nomenclature', id=nomenclature.id) }}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> Редактировать
+            </a>
+            <a href="{{ url_for('nomenclatures.nomenclatures_list') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Назад к списку
+            </a>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-info-circle"></i> Основная информация
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 30%;">Артикул:</th>
+                            <td><code>{{ nomenclature.sku }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>Штрих-код:</th>
+                            <td><code>{{ nomenclature.barcode or '—' }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>Категория:</th>
+                            <td>{{ nomenclature.category_name or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Тип учета:</th>
+                            <td>
+                                {% if nomenclature.accounting_type == 'individual' %}
+                                    <span class="badge bg-primary">Индивидуальный</span>
+                                {% elif nomenclature.accounting_type == 'batch' %}
+                                    <span class="badge bg-success">Партионный</span>
+                                {% elif nomenclature.accounting_type == 'quantitative' %}
+                                    <span class="badge bg-warning text-dark">Количественный</span>
+                                {% elif nomenclature.accounting_type == 'kit' %}
+                                    <span class="badge bg-info">Комплект</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Ед. изм.:</th>
+                            <td>{{ nomenclature.unit or 'шт' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Статус:</th>
+                            <td>
+                                {% if nomenclature.is_active %}
+                                    <span class="badge bg-success">Активен</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Неактивен</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            {% if nomenclature.manufacturer or nomenclature.model or nomenclature.brand or nomenclature.country %}
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-cog"></i> Технические характеристики
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        {% if nomenclature.manufacturer %}
+                        <tr>
+                            <th>Производитель:</th>
+                            <td>{{ nomenclature.manufacturer }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if nomenclature.model %}
+                        <tr>
+                            <th>Модель:</th>
+                            <td>{{ nomenclature.model }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if nomenclature.brand %}
+                        <tr>
+                            <th>Бренд:</th>
+                            <td>{{ nomenclature.brand }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if nomenclature.country %}
+                        <tr>
+                            <th>Страна:</th>
+                            <td>{{ nomenclature.country }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if nomenclature.min_stock or nomenclature.reorder_point or nomenclature.shelf_life_days %}
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-chart-line"></i> Нормирование
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        {% if nomenclature.min_stock %}
+                        <tr>
+                            <th>Мин. запас:</th>
+                            <td>{{ nomenclature.min_stock }} {{ nomenclature.unit }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if nomenclature.reorder_point %}
+                        <tr>
+                            <th>Точка заказа:</th>
+                            <td>{{ nomenclature.reorder_point }} {{ nomenclature.unit }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if nomenclature.shelf_life_days %}
+                        <tr>
+                            <th>Срок годности:</th>
+                            <td>{{ nomenclature.shelf_life_days }} дней</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if nomenclature.description %}
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-align-left"></i> Описание
+                </div>
+                <div class="card-body">
+                    {{ nomenclature.description }}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- ============ ИЗОБРАЖЕНИЯ ============ -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-image"></i> Изображения
+                    <button type="button" class="btn btn-sm btn-primary float-end" onclick="showUploadModal()">
+                        <i class="fas fa-upload"></i> Загрузить
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="imageGallery" class="row g-2">
+                        <!-- Изображения будут загружаться через AJAX -->
+                        <div class="col-12 text-center text-muted py-3">
+                            <i class="fas fa-spinner fa-spin"></i> Загрузка...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <!-- ============ БЛОК МОДИФИКАЦИЙ ============ -->
+            <div class="card mb-3">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <span>
+                        <i class="fas fa-tags"></i> 
+                        Модификации
+                    </span>
+                    <button type="button" class="btn btn-sm btn-light" onclick="showAddVariationModal()">
+                        <i class="fas fa-plus"></i> Добавить модификацию
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="variations-container">
+                        <div class="text-center text-muted py-3" id="variations-loading">
+                            <i class="fas fa-spinner fa-spin"></i> Загрузка модификаций...
+                        </div>
+                    </div>
+                    
+                    <!-- Таблица для отображения модификаций (динамическая) -->
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover" id="variations-table" style="display: none;">
+                            <thead>
+                                <!-- Заголовки будут добавлены динамически через JavaScript -->
+                            </thead>
+                            <tbody id="variations-tbody"></tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Сообщение, если нет модификаций -->
+                    <div id="no-variations" class="text-center text-muted py-3" style="display: none;">
+                        <i class="fas fa-info-circle"></i> У этой номенклатуры нет модификаций
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Основной блок в зависимости от типа учета -->
+            {% if nomenclature.accounting_type == 'individual' %}
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-cube"></i> Экземпляры</span>
+                        <a href="{{ url_for('instances.add_instance', nomenclature_id=nomenclature.id) }}" class="btn btn-sm btn-success">
+                            <i class="fas fa-plus"></i> Добавить экземпляр
+                        </a>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Инв. номер</th>
+                                    <th>Серийный номер</th>
+                                    <th>Размер/Цвет</th>
+                                    <th>Статус</th>
+                                    <th>Местоположение</th>
+                                    <th>Сотрудник</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for inst in nomenclature.instances %}
+                                <tr>
+                                    <td><code>{{ inst.inventory_number }}</code></td>
+                                    <td>{{ inst.serial_number or '—' }}</td>
+                                    <td>
+                                        {% if inst.siz_size or inst.siz_color %}
+                                            {{ inst.siz_size or '' }} {{ inst.siz_color or '' }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ get_status_color(inst.status) }}">
+                                            {{ get_status_text(inst.status) }}
+                                        </span>
+                                    </td>
+                                    <td>{{ inst.location_name or '—' }}</td>
+                                    <td>{{ inst.employee_name or '—' }}</td>
+                                    <td>
+                                        {% if inst.inventory_number %}
+                                        <a href="{{ url_for('instances.view_instance', inventory_number=inst.inventory_number) }}"
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-3">
+                                        <p class="text-muted mb-0">Нет экземпляров</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+            {% elif nomenclature.accounting_type == 'batch' %}
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-layer-group"></i> Партии</span>
+                        <a href="{{ url_for('warehouses.add_batch', nomenclature_id=nomenclature.id) }}" class="btn btn-sm btn-success">
+                            <i class="fas fa-plus"></i> Добавить партию
+                        </a>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Номер партии</th>
+                                    <th>Дата закупки</th>
+                                    <th>Срок годности</th>
+                                    <th>Количество</th>
+                                    <th>Статус</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for batch in nomenclature.batches %}
+                                <tr>
+                                    <td><code>{{ batch.batch_number }}</code></td>
+                                    <td>{{ batch.purchase_date or '—' }}</td>
+                                    <td>{{ batch.expiry_date or '—' }}</td>
+                                    <td>{{ batch.total_quantity or 0 }} {{ nomenclature.unit }}</td>
+                                    <td>
+                                        {% if batch.expiry_date and batch.expiry_date < now().strftime('%Y-%m-%d') %}
+                                            <span class="badge bg-danger">Просрочена</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Активна</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-3">
+                                        <p class="text-muted mb-0">Нет партий</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+            {% elif nomenclature.accounting_type == 'quantitative' %}
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-boxes"></i> Остатки на складах</span>
+                        <a href="{{ url_for('warehouses.manage_stock', nomenclature_id=nomenclature.id) }}" class="btn btn-sm btn-success">
+                            <i class="fas fa-plus"></i> Управление
+                        </a>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Склад</th>
+                                    <th>Ячейка</th>
+                                    <th>Количество</th>
+                                    <th>Зарезервировано</th>
+                                    <th>Доступно</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stock in nomenclature.stocks %}
+                                <tr>
+                                    <td>{{ stock.warehouse_name or '—' }}</td>
+                                    <td>{{ stock.bin_code or '—' }}</td>
+                                    <td>{{ stock.quantity }} {{ nomenclature.unit }}</td>
+                                    <td>{{ stock.reserved_quantity or 0 }} {{ nomenclature.unit }}</td>
+                                    <td>{{ (stock.quantity - (stock.reserved_quantity or 0)) }} {{ nomenclature.unit }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-3">
+                                        <p class="text-muted mb-0">Нет остатков</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+            {% elif nomenclature.accounting_type == 'kit' %}
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-puzzle-piece"></i> Состав комплекта</span>
+                        <a href="{{ url_for('nomenclatures.edit_nomenclature', id=nomenclature.id) }}" class="btn btn-sm btn-warning">
+                            <i class="fas fa-edit"></i> Редактировать
+                        </a>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Компонент</th>
+                                    <th>Артикул</th>
+                                    <th>Количество</th>
+                                    <th>Ед. изм.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for comp in nomenclature.components %}
+                                <tr>
+                                    <td>{{ comp.component_name }}</td>
+                                    <td><code>{{ comp.sku }}</code></td>
+                                    <td>{{ comp.quantity }}</td>
+                                    <td>{{ comp.unit or 'шт' }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-3">
+                                        <p class="text-muted mb-0">Нет компонентов</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <i class="fas fa-history"></i> История изменений
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Действие</th>
+                                <th>Пользователь</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>{{ format_datetime(nomenclature.created_at) }}</td>
+                                <td>Создание</td>
+                                <td>{{ nomenclature.created_by_name or '—' }}</td>
+                            </tr>
+                            {% if nomenclature.updated_at and nomenclature.updated_at != nomenclature.created_at %}
+                            <tr>
+                                <td>{{ format_datetime(nomenclature.updated_at) }}</td>
+                                <td>Обновление</td>
+                                <td>{{ nomenclature.updated_by_name or '—' }}</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно загрузки изображения -->
+<div class="modal fade" id="uploadImageModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Загрузка изображения</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label">Выберите изображение</label>
+                        <input type="file" class="form-control" name="file" accept="image/*" id="imageFile" required>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="isPrimary" name="is_primary">
+                            <label class="form-check-label" for="isPrimary">
+                                Сделать основным изображением
+                            </label>
+                        </div>
+                    </div>
+                    <div id="uploadPreview" class="text-center mb-3" style="display: none;">
+                        <img src="" class="img-fluid img-thumbnail" style="max-height: 200px;">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="uploadImage()" id="uploadBtn">
+                    <i class="fas fa-upload"></i> Загрузить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для добавления модификации -->
+<div class="modal fade" id="addVariationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle"></i> Добавить модификацию
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="variationForm">
+                    <input type="hidden" id="variation_nomenclature_id" value="{{ nomenclature.id }}">
+                    <input type="hidden" id="variation_category_id" value="{{ nomenclature.category_id }}">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">SKU (артикул) *</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="variation_sku" 
+                                       placeholder="Будет сгенерирован автоматически" required>
+                                <button class="btn btn-outline-secondary" type="button" onclick="generateVariationSku()">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Штрих-код</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="variation_barcode" 
+                                       placeholder="Оставьте пустым для автогенерации">
+                                <button class="btn btn-outline-secondary" type="button" onclick="generateVariationBarcode()">
+                                    <i class="fas fa-qrcode"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Динамические поля будут добавляться сюда -->
+                    <div id="dynamicVariationFields" class="row"></div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="variation_active" checked>
+                                <label class="form-check-label" for="variation_active">
+                                    Активна
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-success" onclick="saveVariation()">
+                    <i class="fas fa-save"></i> Сохранить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для редактирования модификации -->
+<div class="modal fade" id="editVariationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit"></i> Редактировать модификацию
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editVariationForm">
+                    <input type="hidden" id="edit_variation_id">
+                    <input type="hidden" id="edit_variation_category_id" value="{{ nomenclature.category_id }}">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">SKU (артикул) *</label>
+                            <input type="text" class="form-control" id="edit_variation_sku" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Штрих-код</label>
+                            <input type="text" class="form-control" id="edit_variation_barcode">
+                        </div>
+                    </div>
+                    
+                    <!-- Динамические поля для редактирования -->
+                    <div id="editDynamicVariationFields" class="row"></div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="edit_variation_active">
+                                <label class="form-check-label" for="edit_variation_active">
+                                    Активна
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-warning" onclick="updateVariation()">
+                    <i class="fas fa-save"></i> Обновить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+let nomenclatureId = {{ nomenclature.id }};
+let categorySettings = [];
+
+// ============ ЗАГРУЗКА ПРИ ОТКРЫТИИ СТРАНИЦЫ ============
+$(document).ready(function() {
+    loadImages();
+    loadCategorySettings();
+});
+
+// ============ ФУНКЦИИ ДЛЯ ИЗОБРАЖЕНИЙ ============
+function showUploadModal() {
+    $('#uploadImageModal').modal('show');
+}
+
+function loadImages() {
+    fetch(`/api/nomenclatures/${nomenclatureId}/images`)
+        .then(response => response.json())
+        .then(images => {
+            const gallery = $('#imageGallery');
+            
+            if (images.length === 0) {
+                gallery.html(`
+                    <div class="col-12 text-center text-muted py-4">
+                        <i class="fas fa-image fa-3x mb-3"></i>
+                        <p>Нет изображений</p>
+                        <button class="btn btn-sm btn-outline-primary" onclick="showUploadModal()">
+                            <i class="fas fa-upload"></i> Загрузить первое изображение
+                        </button>
+                    </div>
+                `);
+                return;
+            }
+            
+            let html = '';
+            images.forEach(img => {
+                const isPrimary = img.is_primary ? 'primary' : '';
+                html += `
+                    <div class="col-6 mb-2" data-image-id="${img.id}">
+                        <div class="card image-card ${isPrimary}">
+                            <img src="${img.thumbnail_url || img.file_path}" class="card-img-top" alt=""
+                                 onerror="this.src='/static/img/no-image.png'">
+                            <div class="card-body p-1">
+                                <div class="btn-group btn-group-sm w-100">
+                                    <button class="btn btn-outline-primary" onclick="setPrimary(${img.id})" 
+                                            title="Сделать основным" ${img.is_primary ? 'disabled' : ''}>
+                                        <i class="fas fa-star"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" onclick="deleteImage(${img.id})" 
+                                            title="Удалить">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            gallery.html(html);
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки изображений:', error);
+            $('#imageGallery').html(`
+                <div class="col-12 text-center text-danger py-3">
+                    <i class="fas fa-exclamation-triangle"></i> Ошибка загрузки изображений
+                </div>
+            `);
+        });
+}
+
+function uploadImage() {
+    const formData = new FormData(document.getElementById('uploadForm'));
+    const btn = $('#uploadBtn');
+    
+    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Загрузка...');
+    
+    fetch(`/api/nomenclatures/${nomenclatureId}/upload-image`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            $('#uploadImageModal').modal('hide');
+            $('#uploadForm')[0].reset();
+            $('#uploadPreview').hide();
+            loadImages();
+            Swal.fire({
+                icon: 'success',
+                title: 'Успешно',
+                text: 'Изображение загружено',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        } else {
+            Swal.fire('Ошибка', data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire('Ошибка', 'Ошибка загрузки', 'error');
+    })
+    .finally(() => {
+        btn.prop('disabled', false).html('<i class="fas fa-upload"></i> Загрузить');
+    });
+}
+
+function deleteImage(imageId) {
+    Swal.fire({
+        title: 'Удаление изображения',
+        text: 'Вы уверены, что хотите удалить это изображение?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Да, удалить',
+        cancelButtonText: 'Отмена'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/api/nomenclatures/images/${imageId}/delete`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadImages();
+                    Swal.fire('Удалено', 'Изображение удалено', 'success');
+                } else {
+                    Swal.fire('Ошибка', data.error, 'error');
+                }
+            })
+            .catch(error => {
+                Swal.fire('Ошибка', 'Ошибка при удалении', 'error');
+            });
+        }
+    });
+}
+
+function setPrimary(imageId) {
+    fetch(`/api/nomenclatures/images/${imageId}/set-primary`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadImages();
+            Swal.fire({
+                icon: 'success',
+                title: 'Готово',
+                text: 'Основное изображение обновлено',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        } else {
+            Swal.fire('Ошибка', data.error, 'error');
+        }
+    });
+}
+
+// ============ ФУНКЦИИ ДЛЯ РАБОТЫ С НАСТРОЙКАМИ КАТЕГОРИЙ ============
+
+function loadCategorySettings() {
+    const categoryId = {{ nomenclature.category_id }};
+    
+    fetch(`/api/categories/${categoryId}/variation-settings`)
+        .then(response => response.json())
+        .then(settings => {
+            categorySettings = settings;
+            console.log('📋 Настройки категории:', settings);
+            loadVariations();
+        })
+        .catch(error => {
+            console.error('❌ Ошибка загрузки настроек:', error);
+            loadVariations();
+        });
+}
+
+// ============ ФУНКЦИИ ДЛЯ МОДИФИКАЦИЙ ============
+
+function loadVariations() {
+    $('#variations-loading').show();
+    $('#variations-table').hide();
+    $('#no-variations').hide();
+    
+    fetch(`/api/nomenclatures/${nomenclatureId}/variations`)
+        .then(response => response.json())
+        .then(variations => {
+            $('#variations-loading').hide();
+            
+            if (variations && variations.length > 0) {
+                buildVariationsTable(variations);
+                $('#variations-table').show();
+            } else {
+                $('#no-variations').show();
+            }
+        })
+        .catch(error => {
+            $('#variations-loading').hide();
+            $('#no-variations').show().html('<i class="fas fa-exclamation-triangle text-danger"></i> Ошибка загрузки модификаций');
+            console.error('Error loading variations:', error);
+        });
+}
+
+function buildVariationsTable(variations) {
+    const thead = $('#variations-table thead');
+    const tbody = $('#variations-tbody');
+    
+    thead.empty();
+    tbody.empty();
+    
+    // Всегда показываем SKU
+    let columns = [
+        { field: 'sku', title: 'SKU' }
+    ];
+    
+    // Группируем настройки по полям
+    const sizeFields = categorySettings.filter(s => s.field_name === 'size');
+    const colorFields = categorySettings.filter(s => s.field_name === 'color');
+    const attrFields = categorySettings.filter(s => s.field_name === 'additional_attributes');
+    
+    // Добавляем поля размера
+    sizeFields.forEach(field => {
+        columns.push({ 
+            field: field.variation_type, 
+            title: field.display_name,
+            type: 'size'
+        });
+    });
+    
+    // Добавляем поля цвета
+    colorFields.forEach(field => {
+        columns.push({ 
+            field: field.variation_type, 
+            title: field.display_name,
+            type: 'color'
+        });
+    });
+    
+    // Добавляем дополнительные атрибуты
+    attrFields.forEach(field => {
+        columns.push({ 
+            field: field.variation_type, 
+            title: field.display_name,
+            type: 'attr'
+        });
+    });
+    
+    // Добавляем стандартные колонки
+    columns.push({ field: 'barcode', title: 'Штрих-код' });
+    columns.push({ field: 'status', title: 'Статус' });
+    columns.push({ field: 'actions', title: 'Действия' });
+    
+    // Формируем заголовки
+    let headerRow = '<tr>';
+    columns.forEach(col => {
+        headerRow += `<th>${col.title}</th>`;
+    });
+    headerRow += '</tr>';
+    thead.html(headerRow);
+    
+    // Формируем строки
+    variations.forEach(v => {
+        let row = '<tr>';
+        
+        // SKU
+        row += `<td><code>${v.sku || '—'}</code></td>`;
+        
+        // Парсим дополнительные атрибуты
+        let attrs = {};
+        if (v.additional_attributes) {
+            try {
+                attrs = JSON.parse(v.additional_attributes);
+            } catch (e) {}
+        }
+        
+        // Значения для полей размера
+        sizeFields.forEach(field => {
+            const value = v[field.variation_type] || v.size || '—';
+            row += `<td>${value}</td>`;
+        });
+        
+        // Значения для полей цвета
+        colorFields.forEach(field => {
+            const value = v[field.variation_type] || v.color || '—';
+            row += `<td>${value}</td>`;
+        });
+        
+        // Значения для дополнительных атрибутов
+        attrFields.forEach(field => {
+            const value = attrs[field.variation_type] || '—';
+            row += `<td>${value}</td>`;
+        });
+        
+        // Штрих-код
+        row += `<td>${v.barcode || '—'}</td>`;
+        
+        // Статус
+        const statusBadge = v.is_active ? 
+            '<span class="badge bg-success">Активна</span>' : 
+            '<span class="badge bg-secondary">Неактивна</span>';
+        row += `<td>${statusBadge}</td>`;
+        
+        // Действия
+        row += `
+            <td>
+                <button class="btn btn-sm btn-warning" onclick="editVariation(${v.id})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteVariation(${v.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        
+        row += '</tr>';
+        tbody.append(row);
+    });
+}
+
+function showAddVariationModal() {
+    // Очищаем форму
+    $('#variation_sku').val('');
+    $('#variation_barcode').val('');
+    $('#variation_active').prop('checked', true);
+    $('#dynamicVariationFields').empty();
+    
+    // Создаем поля на основе настроек категории
+    buildDynamicFields(categorySettings, '#dynamicVariationFields');
+    
+    // Генерируем SKU
+    generateVariationSku();
+    
+    $('#addVariationModal').modal('show');
+}
+
+function buildDynamicFields(settings, container, values = {}) {
+    const $container = $(container);
+    $container.empty();
+    
+    // Группируем поля по field_name
+    const sizeFields = settings.filter(s => s.field_name === 'size');
+    const colorFields = settings.filter(s => s.field_name === 'color');
+    const attrFields = settings.filter(s => s.field_name === 'additional_attributes');
+    
+    // Функция для создания поля
+    function createField(setting, fieldValue) {
+        let fieldHtml = `
+            <div class="col-md-4 mb-3">
+                <label class="form-label">${setting.display_name} ${setting.is_required ? '<span class="text-danger">*</span>' : ''}</label>
+        `;
+        
+        if (setting.possible_values) {
+            try {
+                const options = JSON.parse(setting.possible_values);
+                fieldHtml += `<select class="form-control variation-${setting.field_name === 'size' ? 'size' : (setting.field_name === 'color' ? 'color' : 'attr')}" data-type="${setting.variation_type}" ${setting.is_required ? 'required' : ''}>`;
+                fieldHtml += '<option value="">-- Выберите --</option>';
+                options.forEach(opt => {
+                    fieldHtml += `<option value="${opt}" ${fieldValue === opt ? 'selected' : ''}>${opt}</option>`;
+                });
+                fieldHtml += '</select>';
+            } catch (e) {
+                fieldHtml += `<input type="text" class="form-control variation-${setting.field_name === 'size' ? 'size' : (setting.field_name === 'color' ? 'color' : 'attr')}" data-type="${setting.variation_type}" value="${fieldValue || ''}" ${setting.is_required ? 'required' : ''}>`;
+            }
+        } else {
+            fieldHtml += `<input type="text" class="form-control variation-${setting.field_name === 'size' ? 'size' : (setting.field_name === 'color' ? 'color' : 'attr')}" data-type="${setting.variation_type}" value="${fieldValue || ''}" ${setting.is_required ? 'required' : ''}>`;
+        }
+        
+        fieldHtml += `<small class="form-text text-muted">${getExampleForType(setting.variation_type)}</small>`;
+        fieldHtml += '</div>';
+        
+        return fieldHtml;
+    }
+    
+    // Добавляем поля размера
+    sizeFields.forEach(setting => {
+        const fieldValue = values[setting.variation_type] || values.size || '';
+        $container.append(createField(setting, fieldValue));
+    });
+    
+    // Добавляем поля цвета
+    colorFields.forEach(setting => {
+        const fieldValue = values[setting.variation_type] || values.color || '';
+        $container.append(createField(setting, fieldValue));
+    });
+    
+    // Добавляем дополнительные атрибуты
+    if (attrFields.length > 0) {
+        $container.append('<div class="col-12"><hr class="my-2"></div>');
+        attrFields.forEach(setting => {
+            const fieldValue = values[setting.variation_type] || '';
+            $container.append(createField(setting, fieldValue));
+        });
+    }
+}
+
+function getExampleForType(type) {
+    const examples = {
+        'size': 'Например: 43, XL, 58',
+        'color': 'Например: черный, хаки',
+        'blade_length': 'Например: 80, 90, 100 мм',
+        'blade_material': 'нержавеющая сталь, дамасская сталь',
+        'lock_type': 'liner lock, frame lock',
+        'handle_material': 'G10, карбон, дерево',
+        'type': 'рожковый, накидной, комбинированный',
+        'power': '500, 1000, 1500 Вт',
+        'voltage': '12, 24, 220 В',
+        'thickness': '1, 2, 3 мм',
+        'width': '100, 200, 300 мм',
+        'length': '1000, 2000, 3000 мм',
+        'grade': 'Ст3, Ст45, 09Г2С',
+        'profile_type': 'лист, круг, уголок',
+        'gauge': '0.5, 1.5, 2.5 мм²',
+        'cores': '2, 3, 4, 5 жил',
+        'capacity': '1000, 2000, 5000 mAh',
+        'value': '10, 100, 1000 Ом',
+        'package': 'SMD 0805, DIP, TO-220'
+    };
+    return examples[type] || 'Введите значение';
+}
+
+function generateVariationSku() {
+    const baseSku = '{{ nomenclature.sku }}';
+    
+    // Собираем значения из всех полей для генерации SKU
+    let parts = [baseSku];
+    
+    $('.variation-size').each(function() {
+        const val = $(this).val();
+        if (val) {
+            const cleanVal = val.replace(/[^a-zA-Z0-9]/g, '');
+            if (cleanVal) parts.push(cleanVal);
+        }
+    });
+    
+    $('.variation-color').each(function() {
+        const val = $(this).val();
+        if (val) {
+            const cleanVal = val.substring(0, 3).toUpperCase();
+            if (cleanVal) parts.push(cleanVal);
+        }
+    });
+    
+    if (parts.length === 1) {
+        const random = Math.floor(Math.random() * 1000);
+        parts.push(random.toString());
+    }
+    
+    $('#variation_sku').val(parts.join('-'));
+}
+
+function generateVariationBarcode() {
+    const sku = $('#variation_sku').val();
+    
+    fetch('/api/generate-barcode', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ sku: sku })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            $('#variation_barcode').val(data.barcode);
+        }
+    });
+}
+
+function saveVariation() {
+    // Собираем данные
+    const sku = $('#variation_sku').val();
+    const barcode = $('#variation_barcode').val();
+    const is_active = $('#variation_active').is(':checked');
+    
+    // Собираем поля размера
+    let size = null;
+    $('.variation-size').each(function() {
+        const val = $(this).val();
+        if (val) size = val;
+    });
+    
+    // Собираем поля цвета
+    let color = null;
+    $('.variation-color').each(function() {
+        const val = $(this).val();
+        if (val) color = val;
+    });
+    
+    // Собираем дополнительные атрибуты
+    let additionalAttributes = {};
+    $('.variation-attr').each(function() {
+        const type = $(this).data('type');
+        const value = $(this).val();
+        if (value) {
+            additionalAttributes[type] = value;
+        }
+    });
+    
+    // Проверяем обязательные поля
+    const requiredFields = categorySettings.filter(s => s.is_required);
+    let missingFields = [];
+    
+    requiredFields.forEach(field => {
+        if (field.field_name === 'size' && !size) {
+            missingFields.push(field.display_name);
+        } else if (field.field_name === 'color' && !color) {
+            missingFields.push(field.display_name);
+        } else if (field.field_name === 'additional_attributes') {
+            if (!additionalAttributes[field.variation_type]) {
+                missingFields.push(field.display_name);
+            }
+        }
+    });
+    
+    if (missingFields.length > 0) {
+        Swal.fire('Ошибка', `Заполните обязательные поля: ${missingFields.join(', ')}`, 'error');
+        return;
+    }
+    
+    const data = {
+        sku: sku,
+        size: size,
+        color: color,
+        barcode: barcode,
+        additional_attributes: additionalAttributes,
+        is_active: is_active
+    };
+    
+    fetch(`/api/nomenclatures/{{ nomenclature.id }}/variations/create`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            $('#addVariationModal').modal('hide');
+            loadCategorySettings();
+            Swal.fire({
+                icon: 'success',
+                title: 'Успешно',
+                text: 'Модификация создана',
+                timer: 1500
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Ошибка',
+                text: result.message || 'Ошибка создания'
+            });
+        }
+    })
+    .catch(error => {
+        Swal.fire({
+            icon: 'error',
+            title: 'Ошибка',
+            text: 'Ошибка соединения'
+        });
+    });
+}
+
+function editVariation(id) {
+    fetch(`/api/variations/${id}`)
+        .then(response => response.json())
+        .then(variation => {
+            $('#edit_variation_id').val(variation.id);
+            $('#edit_variation_sku').val(variation.sku);
+            $('#edit_variation_barcode').val(variation.barcode || '');
+            $('#edit_variation_active').prop('checked', variation.is_active == 1);
+            
+            // Парсим дополнительные атрибуты
+            let attrs = {};
+            if (variation.additional_attributes) {
+                try {
+                    attrs = JSON.parse(variation.additional_attributes);
+                } catch (e) {}
+            }
+            
+            // Создаем поля для редактирования
+            buildDynamicFields(categorySettings, '#editDynamicVariationFields', {
+                ...attrs,
+                size: variation.size,
+                color: variation.color
+            });
+            
+            $('#editVariationModal').modal('show');
+        });
+}
+
+function updateVariation() {
+    const id = $('#edit_variation_id').val();
+    const sku = $('#edit_variation_sku').val();
+    const barcode = $('#edit_variation_barcode').val();
+    const is_active = $('#edit_variation_active').is(':checked');
+    
+    // Собираем поля размера
+    let size = null;
+    $('#editDynamicVariationFields .variation-size').each(function() {
+        const val = $(this).val();
+        if (val) size = val;
+    });
+    
+    // Собираем поля цвета
+    let color = null;
+    $('#editDynamicVariationFields .variation-color').each(function() {
+        const val = $(this).val();
+        if (val) color = val;
+    });
+    
+    // Собираем дополнительные атрибуты
+    let additionalAttributes = {};
+    $('#editDynamicVariationFields .variation-attr').each(function() {
+        const type = $(this).data('type');
+        const value = $(this).val();
+        if (value) {
+            additionalAttributes[type] = value;
+        }
+    });
+    
+    const data = {
+        sku: sku,
+        size: size,
+        color: color,
+        barcode: barcode,
+        additional_attributes: additionalAttributes,
+        is_active: is_active
+    };
+    
+    fetch(`/api/variations/${id}/update`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            $('#editVariationModal').modal('hide');
+            loadCategorySettings();
+            Swal.fire({
+                icon: 'success',
+                title: 'Успешно',
+                text: 'Модификация обновлена',
+                timer: 1500
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Ошибка',
+                text: result.message || 'Ошибка обновления'
+            });
+        }
+    });
+}
+
+function deleteVariation(id) {
+    Swal.fire({
+        title: 'Удаление модификации',
+        text: 'Вы уверены, что хотите удалить эту модификацию?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Да, удалить',
+        cancelButtonText: 'Отмена'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/api/variations/${id}/delete`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    loadCategorySettings();
+                    Swal.fire('Удалено', 'Модификация удалена', 'success');
+                } else {
+                    Swal.fire('Ошибка', result.message, 'error');
+                }
+            });
+        }
+    });
+}
+</script>
+
+<style>
+.image-card {
+    border: 2px solid transparent;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.image-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.image-card.primary {
+    border-color: #ffc107;
+    box-shadow: 0 0 10px rgba(255,193,7,0.3);
+}
+.image-card .card-img-top {
+    height: 100px;
+    object-fit: cover;
+}
+.image-card .btn-group {
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+.image-card:hover .btn-group {
+    opacity: 1;
+}
+.image-card .btn-group .btn {
+    padding: 0.2rem 0.3rem;
+    font-size: 0.7rem;
+}
+
+/* Стили для модификаций */
+.variation-badge {
+    background-color: #17a2b8;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    display: inline-block;
+    margin-right: 5px;
+}
+</style>
+{% endblock %}

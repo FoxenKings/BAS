@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_translation('reports', 'supplier_deliveries') }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-truck"></i> {{ get_translation('reports', 'supplier_deliveries') }}
+        </h1>
+        <div>
+            <a href="{{ url_for('reports.reports') }}" class="btn btn-primary">
+                <i class="fas fa-arrow-left"></i> {{ get_translation('reports', 'back_to_reports') }}
+            </a>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-filter"></i> {{ get_translation('common', 'filters') }}
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="date_from" class="form-label">{{ get_translation('reports', 'date_from') }}</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from" 
+                           value="{{ request.args.get('date_from') or (now().replace(day=1)).strftime('%Y-%m-%d') }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="date_to" class="form-label">{{ get_translation('reports', 'date_to') }}</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to" 
+                           value="{{ request.args.get('date_to') or now().strftime('%Y-%m-%d') }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="supplier_id" class="form-label">{{ get_translation('suppliers', 'title') }}</label>
+                    <select class="form-select" id="supplier_id" name="supplier_id">
+                        <option value="">{{ get_translation('reports', 'all_suppliers') }}</option>
+                        {% for s in suppliers %}
+                        <option value="{{ s.id }}" {% if request.args.get('supplier_id')|int == s.id %}selected{% endif %}>
+                            {{ s.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> {{ get_translation('common', 'apply') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Сводка по поставщикам -->
+    <div class="row mb-4">
+        {% for stat in supplier_stats %}
+        <div class="col-md-3 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6><a href="{{ url_for('suppliers.supplier_details', id=stat.id) }}">{{ stat.name }}</a></h6>
+                    <h4>{{ stat.doc_count }} {{ get_translation('reports', 'deliveries') }}</h4>
+                    <p class="mb-0">{{ get_translation('reports', 'total_amount') }}: {{ format_currency(stat.total_amount) }}</p>
+                    <small class="text-muted">{{ get_translation('reports', 'average_amount') }}: {{ format_currency(stat.avg_amount) }}</small>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Детализация -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-list"></i> {{ get_translation('reports', 'delivery_details') }}
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="deliveriesTable">
+                    <thead>
+                        <tr>
+                            <th>{{ get_translation('common', 'date') }}</th>
+                            <th>{{ get_translation('suppliers', 'title') }}</th>
+                            <th>{{ get_translation('documents', 'document_number') }}</th>
+                            <th>{{ get_translation('nomenclatures', 'name') }}</th>
+                            <th class="text-end">{{ get_translation('common', 'quantity') }}</th>
+                            <th class="text-end">{{ get_translation('common', 'price') }}</th>
+                            <th class="text-end">{{ get_translation('common', 'amount') }}</th>
+                            <th>{{ get_translation('batches', 'batch_number') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for delivery in deliveries %}
+                        <tr>
+                            <td>{{ format_date(delivery.document_date) }}</td>
+                            <td>
+                                <a href="{{ url_for('suppliers.supplier_details', id=delivery.supplier_id) }}">{{ delivery.supplier_name }}</a>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('documents.view_document', id=delivery.document_id) }}">
+                                    {{ delivery.document_number }}
+                                </a>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('nomenclatures.edit_nomenclature', id=delivery.nomenclature_id) }}">{{ delivery.nomenclature_name }}</a>
+                            </td>
+                            <td class="text-end">{{ format_number(delivery.quantity) }}</td>
+                            <td class="text-end">{{ format_currency(delivery.price) }}</td>
+                            <td class="text-end">{{ format_currency(delivery.amount) }}</td>
+                            <td>
+                                {% if delivery.batch_number %}
+                                <a href="{{ url_for('warehouses.edit_batch', id=delivery.batch_id) }}"><code>{{ delivery.batch_number }}</code></a>
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#deliveriesTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/ru.json'
+        },
+        order: [[0, 'desc']],
+        pageLength: 50
+    });
+});
+</script>
+{% endblock %}

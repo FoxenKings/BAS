@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}НПЦ БАС ТО - Система управления номенклатурой{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-10">
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-5">
+                    <!-- Герой-секция -->
+                    <div class="text-center mb-5">
+                        <div class="mb-4">
+                            <i class="fas fa-cubes fa-4x text-primary"></i>
+                            <i class="fas fa-tag fa-3x text-success ms-3"></i>
+                            <i class="fas fa-layer-group fa-3x text-info ms-3"></i>
+                        </div>
+                        
+                        <h1 class="display-4 mb-3">
+                            НПЦ БАС ТО
+                        </h1>
+                        
+                        <div class="d-flex justify-content-center align-items-center mb-3">
+                            <span class="badge-new" style="font-size: 1rem; padding: 8px 16px;">
+                                <i class="fas fa-tag"></i> НОМЕНКЛАТУРНЫЙ УЧЕТ v7.0
+                            </span>
+                        </div>
+                        
+                        <p class="lead text-muted mb-4">
+                            Единая система учета основных средств, оборудования, инструментов, 
+                            материалов и расходных запасов
+                        </p>
+                        
+                        <div class="mt-4 mb-5">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <div class="feature-box p-4 h-100 bg-light rounded-3">
+                                        <i class="fas fa-cubes fa-2x text-primary mb-3"></i>
+                                        <h4>Номенклатура</h4>
+                                        <p class="text-muted mb-0">
+                                            Единый справочник всех товарно-материальных ценностей
+                                        </p>
+                                        <ul class="list-unstyled mt-3 text-start small">
+                                            <li><i class="fas fa-check text-success"></i> Активы и ОС</li>
+                                            <li><i class="fas fa-check text-success"></i> Оборудование</li>
+                                            <li><i class="fas fa-check text-success"></i> Инструменты</li>
+                                            <li><i class="fas fa-check text-success"></i> СИЗ</li>
+                                            <li><i class="fas fa-check text-success"></i> Расходники</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="feature-box p-4 h-100 bg-light rounded-3">
+                                        <i class="fas fa-cubes fa-2x text-success mb-3"></i>
+                                        <h4>Типы учета</h4>
+                                        <p class="text-muted mb-0">
+                                            Гибкая система учета под любые бизнес-процессы
+                                        </p>
+                                        <ul class="list-unstyled mt-3 text-start small">
+                                            <li><i class="fas fa-cube text-instance"></i> <strong>Инвентарный</strong> — полистный учет</li>
+                                            <li><i class="fas fa-layer-group text-batch"></i> <strong>Партионный</strong> — учет по партиям</li>
+                                            <li><i class="fas fa-boxes text-stock"></i> <strong>Количественный</strong> — складские остатки</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="feature-box p-4 h-100 bg-light rounded-3">
+                                        <i class="fas fa-file-alt fa-2x text-warning mb-3"></i>
+                                        <h4>Документооборот</h4>
+                                        <p class="text-muted mb-0">
+                                            Полный цикл учета движения ценностей
+                                        </p>
+                                        <ul class="list-unstyled mt-3 text-start small">
+                                            <li><i class="fas fa-plus-circle text-success"></i> Поступление</li>
+                                            <li><i class="fas fa-exchange-alt text-info"></i> Перемещение</li>
+                                            <li><i class="fas fa-hand-holding text-primary"></i> Выдача</li>
+                                            <li><i class="fas fa-minus-circle text-danger"></i> Списание</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if not current_user.is_authenticated %}
+                    <!-- Блок авторизации -->
+                    <div class="row justify-content-center mt-4">
+                        <div class="col-md-8">
+                            <div class="card bg-light border-0">
+                                <div class="card-body p-4">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-7">
+                                            <h5 class="mb-2">
+                                                <i class="fas fa-sign-in-alt"></i> Вход в систему
+                                            </h5>
+                                            <p class="text-muted mb-0">
+                                                Для работы с системой необходима авторизация
+                                            </p>
+                                        </div>
+                                        <div class="col-md-5 text-md-end mt-3 mt-md-0">
+                                            <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg px-4">
+                                                <i class="fas fa-sign-in-alt"></i> Войти
+                                            </a>
+                                        </div>
+                                    </div>
+                                    
+                                    <hr class="my-4">
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <small class="text-muted d-block">
+                                                <strong>Демо-доступ:</strong>
+                                            </small>
+                                            <div class="mt-2">
+                                                <span class="badge bg-danger">admin</span> / admin123
+                                                <br>
+                                                <span class="badge bg-warning">manager</span> / manager123
+                                                <br>
+                                                <span class="badge bg-info">user</span> / user123
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 text-md-end">
+                                            <small class="text-muted">
+                                                <i class="fas fa-shield-alt"></i> Полный доступ
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <!-- Блок для авторизованных -->
+                    <div class="row justify-content-center mt-4">
+                        <div class="col-md-8">
+                            <div class="alert alert-success">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-check-circle fa-2x me-3"></i>
+                                    <div>
+                                        <h5 class="alert-heading mb-1">Вы авторизованы</h5>
+                                        <p class="mb-0">
+                                            Пользователь: <strong>{{ current_user.username }}</strong>
+                                            ({{ current_user.role }})
+                                        </p>
+                                    </div>
+                                    <div class="ms-auto">
+                                        <a href="{{ url_for('dashboard') }}" class="btn btn-success">
+                                            <i class="fas fa-tachometer-alt"></i> Перейти к панели
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Информация о версии -->
+                    <hr class="my-5">
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-database fa-2x text-secondary me-3"></i>
+                                <div>
+                                    <h6 class="mb-1">База данных: assets.db</h6>
+                                    <p class="text-muted small mb-0">
+                                        SQLite | Схема: номенклатурный учет | 
+                                        Последнее обновление: {{ now().strftime('%d.%m.%Y') }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-md-end">
+                            <span class="version-badge new-arch">
+                                <i class="fas fa-tag"></i> v7.0 (номенклатура)
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Архитектурные изменения -->
+                    <div class="mt-4 p-3 bg-light rounded">
+                        <div class="d-flex">
+                            <div>
+                                <i class="fas fa-arrow-circle-up fa-2x text-primary me-3"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">✨ Новая архитектура: Единый справочник номенклатуры</h6>
+                                <p class="text-muted small mb-0">
+                                    Все типы активов (основные средства, оборудование, инструменты, СИЗ, расходники) 
+                                    объединены в единую систему с гибкими типами учета. 
+                                    Старые разделы сохранены для обратной совместимости.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Футер страницы -->
+            <div class="text-center mt-4 text-muted">
+                <small>
+                    <i class="fas fa-copyright"></i> 2024-2025 НПЦ БАС ТО | 
+                    Система управления номенклатурой и активами
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.feature-box {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.feature-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+}
+.text-instance { color: #20c997; }
+.text-batch { color: #fd7e14; }
+.text-stock { color: #17a2b8; }
+</style>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Обнаружен дубликат{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-exclamation-triangle text-warning"></i> Обнаружен дубликат
+        </h1>
+        <a href="{{ url_for('instances.add_instance') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cube"></i> Экземпляр с инвентарным номером {{ inventory_number }} уже существует
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        Вы пытаетесь добавить экземпляр, который уже есть в системе.
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Текущие данные (из формы):</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <th>Инв. номер:</th>
+                                    <td>{{ form_data.inventory_number }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Старый инв. номер:</th>
+                                    <td>{{ form_data.old_inventory_number or '—' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Серийный номер:</th>
+                                    <td>{{ form_data.serial_number or '—' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Статус:</th>
+                                    <td>{{ form_data.status }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Существующий экземпляр:</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <th>Инв. номер:</th>
+                                    <td>{{ existing_instance.inventory_number }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Старый инв. номер:</th>
+                                    <td>{{ existing_instance.old_inventory_number or '—' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Серийный номер:</th>
+                                    <td>{{ existing_instance.serial_number or '—' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Статус:</th>
+                                    <td>{{ existing_instance.status }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Номенклатура:</th>
+                                    <td>{{ existing_instance.nomenclature_name }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-center gap-3 mt-4">
+                        <form method="POST" action="{{ url_for('instances.add_instance') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="nomenclature_id" value="{{ form_data.nomenclature_id }}">
+                            <input type="hidden" name="inventory_number" value="{{ form_data.inventory_number }}">
+                            <input type="hidden" name="old_inventory_number" value="{{ form_data.old_inventory_number }}">
+                            <input type="hidden" name="serial_number" value="{{ form_data.serial_number }}">
+                            <input type="hidden" name="status" value="{{ form_data.status }}">
+                            <input type="hidden" name="location_id" value="{{ form_data.location_id }}">
+                            <input type="hidden" name="employee_id" value="{{ form_data.employee_id }}">
+                            <input type="hidden" name="purchase_date" value="{{ form_data.purchase_date }}">
+                            <input type="hidden" name="purchase_price" value="{{ form_data.purchase_price }}">
+                            <input type="hidden" name="update_existing" value="1">
+                            <input type="hidden" name="existing_id" value="{{ existing_instance.id }}">
+                            
+                            <button type="submit" class="btn btn-warning btn-lg">
+                                <i class="fas fa-sync-alt"></i> Обновить существующий
+                            </button>
+                        </form>
+                        
+                        <a href="{{ url_for('instances.add_instance') }}" class="btn btn-secondary btn-lg">
+                            <i class="fas fa-times"></i> Отмена
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

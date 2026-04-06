@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>АКТ ВЫДАЧИ ИНСТРУМЕНТА — {{ document.document_number }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 12pt;
+            color: #000;
+            background: #fff;
+        }
+
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            padding: 15mm 20mm 15mm 25mm;
+            position: relative;
+        }
+
+        /* ─── Шапка ─── */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 6mm;
+            border-bottom: 2px solid #000;
+            padding-bottom: 5mm;
+        }
+
+        .org-info {
+            flex: 1;
+        }
+
+        .org-name {
+            font-size: 14pt;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        .org-sub {
+            font-size: 9pt;
+            color: #444;
+            margin-top: 2px;
+        }
+
+        .org-slogan {
+            font-size: 9pt;
+            font-style: italic;
+            color: #555;
+            margin-top: 3px;
+        }
+
+        .doc-meta {
+            text-align: right;
+            min-width: 80mm;
+        }
+
+        .doc-number {
+            font-size: 13pt;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+
+        .doc-date {
+            font-size: 10pt;
+            margin-top: 3px;
+        }
+
+        /* ─── Заголовок документа ─── */
+        .doc-title {
+            text-align: center;
+            margin: 5mm 0 4mm;
+        }
+
+        .doc-title h1 {
+            font-size: 16pt;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .doc-title .subtitle {
+            font-size: 10pt;
+            color: #444;
+            margin-top: 2px;
+        }
+
+        /* ─── Участники ─── */
+        .parties {
+            margin: 4mm 0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            padding: 4mm 5mm;
+            background: #f9f9f9;
+        }
+
+        .party-row {
+            display: flex;
+            gap: 8mm;
+            margin-bottom: 2mm;
+        }
+
+        .party-row:last-child { margin-bottom: 0; }
+
+        .party-label {
+            font-weight: bold;
+            min-width: 40mm;
+            font-size: 11pt;
+        }
+
+        .party-value {
+            font-size: 11pt;
+            border-bottom: 1px dotted #666;
+            flex: 1;
+            padding-bottom: 1px;
+        }
+
+        .party-value .sub {
+            font-size: 9pt;
+            color: #555;
+            margin-top: 1px;
+        }
+
+        /* ─── Таблица ─── */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 4mm 0;
+            font-size: 11pt;
+        }
+
+        .items-table th {
+            background: #eee;
+            border: 1px solid #555;
+            padding: 3mm 2mm;
+            text-align: center;
+            font-weight: bold;
+            font-size: 10pt;
+        }
+
+        .items-table td {
+            border: 1px solid #666;
+            padding: 2.5mm 2mm;
+            vertical-align: middle;
+        }
+
+        .items-table td.center { text-align: center; }
+        .items-table td.right  { text-align: right; }
+        .items-table td.mono   { font-family: 'Courier New', monospace; font-size: 10pt; }
+
+        .items-table tbody tr:nth-child(even) {
+            background: #fafafa;
+        }
+
+        .items-table tfoot td {
+            background: #f0f0f0;
+            font-weight: bold;
+            border: 1px solid #555;
+            padding: 2.5mm 2mm;
+        }
+
+        /* ─── Примечание/статус ─── */
+        .notes-section {
+            margin: 4mm 0;
+            font-size: 10pt;
+        }
+
+        .notes-label {
+            font-weight: bold;
+            margin-bottom: 1mm;
+        }
+
+        .notes-box {
+            border: 1px solid #aaa;
+            min-height: 12mm;
+            padding: 2mm;
+            border-radius: 2px;
+        }
+
+        /* ─── Подписи ─── */
+        .signatures {
+            margin-top: 8mm;
+            display: flex;
+            gap: 15mm;
+        }
+
+        .sig-block {
+            flex: 1;
+            border-top: 2px solid #000;
+            padding-top: 3mm;
+        }
+
+        .sig-role {
+            font-weight: bold;
+            font-size: 11pt;
+            margin-bottom: 2mm;
+        }
+
+        .sig-name-line {
+            border-bottom: 1px solid #000;
+            min-height: 8mm;
+            margin-bottom: 1mm;
+        }
+
+        .sig-name-hint {
+            font-size: 8pt;
+            color: #666;
+            text-align: center;
+        }
+
+        .sig-date-line {
+            display: flex;
+            align-items: center;
+            gap: 3mm;
+            margin-top: 3mm;
+            font-size: 10pt;
+        }
+
+        .sig-date-blank {
+            border-bottom: 1px solid #000;
+            flex: 1;
+            min-height: 5mm;
+        }
+
+        /* ─── Подвал ─── */
+        .footer {
+            margin-top: 8mm;
+            padding-top: 3mm;
+            border-top: 1px solid #aaa;
+            display: flex;
+            justify-content: space-between;
+            font-size: 8pt;
+            color: #555;
+        }
+
+        /* ─── Кнопки (только на экране) ─── */
+        .print-controls {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 9999;
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-print {
+            background: #1d4ed8;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+
+        .btn-print:hover { background: #1e40af; }
+
+        .btn-back {
+            background: #6b7280;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-back:hover { background: #4b5563; }
+
+        /* ─── Печать ─── */
+        @media print {
+            .print-controls { display: none !important; }
+            body { background: #fff; }
+            .page {
+                width: 100%;
+                margin: 0;
+                padding: 10mm 15mm 10mm 20mm;
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Кнопки управления (только на экране) -->
+<div class="print-controls">
+    <a href="{{ url_for('documents.view_document', id=document.id) }}" class="btn-back">
+        ← Назад к документу
+    </a>
+    <button class="btn-print" onclick="window.print()">
+        🖨 Печать
+    </button>
+</div>
+
+<div class="page">
+
+    <!-- ═══ ШАПКА ═══ -->
+    <div class="header">
+        <div class="org-info">
+            <div class="org-name">АНО «НПЦ БАС ТО»</div>
+            <div class="org-sub">Автономная некоммерческая организация<br>«Научно-производственный центр беспилотных авиационных систем Томской области»</div>
+            <div class="org-slogan">✈ Мы рождены для неба!</div>
+        </div>
+        <div class="doc-meta">
+            <div class="doc-number">{{ document.document_number }}</div>
+            <div class="doc-date">от {{ format_date(document.document_date) if document.document_date else '___________' }}</div>
+            {% if document.from_warehouse_name %}
+            <div style="font-size:9pt; margin-top:3px; color:#555;">Со склада: {{ document.from_warehouse_name }}</div>
+            {% endif %}
+            <div id="qrBox" style="margin-top:5px; width:60px; height:60px; border:1px dashed #ccc; display:flex; align-items:center; justify-content:center; margin-left:auto;">
+                <img id="qrImg" src="" alt="QR" style="display:none; width:58px; height:58px;">
+                <span id="qrHint" style="font-size:6pt; color:#bbb; text-align:center;">QR</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ ЗАГОЛОВОК ═══ -->
+    <div class="doc-title">
+        <h1>Акт выдачи инструмента</h1>
+        <div class="subtitle">Документ выдачи материальных ценностей сотруднику</div>
+    </div>
+
+    <!-- ═══ УЧАСТНИКИ ═══ -->
+    <div class="parties">
+        <div class="party-row">
+            <div class="party-label">Выдал:</div>
+            <div class="party-value">
+                {{ document.created_by_name or '___________________________' }}
+            </div>
+        </div>
+        <div class="party-row">
+            <div class="party-label">Получил:</div>
+            <div class="party-value">
+                {% if document.employee_name %}
+                    {{ document.employee_name }}
+                    {% if document.employee_position %}
+                        <div class="sub">{{ document.employee_position }}{% if document.employee_department %}, {{ document.employee_department }}{% endif %}</div>
+                    {% endif %}
+                {% else %}
+                    ___________________________
+                {% endif %}
+            </div>
+        </div>
+        {% if document.purpose_name %}
+        <div class="party-row">
+            <div class="party-label">Цель выдачи:</div>
+            <div class="party-value">{{ document.purpose_name }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ═══ ТАБЛИЦА ПОЗИЦИЙ ═══ -->
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th style="width:7mm;">№</th>
+                <th>Наименование</th>
+                <th style="width:15mm;">Кол-во</th>
+                <th style="width:15mm;">Ед.</th>
+                <th style="width:35mm;">Инв./Сер. номер</th>
+                <th style="width:35mm;">Примечание</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td class="center">{{ loop.index }}</td>
+                <td>
+                    {{ item.nomenclature_name }}
+                    {% if item.size or item.color %}
+                        <br><small style="color:#666;">
+                            {% if item.size %}р.{{ item.size }}{% endif %}
+                            {% if item.color %} / {{ item.color }}{% endif %}
+                        </small>
+                    {% endif %}
+                </td>
+                <td class="center">{{ item.quantity | int if item.quantity is number and (item.quantity % 1 == 0) else item.quantity }}</td>
+                <td class="center">{{ item.unit or 'шт' }}</td>
+                <td class="mono center">
+                    {% if item.serial_number %}
+                        {{ item.serial_number }}
+                    {% elif item.inventory_number %}
+                        {{ item.inventory_number }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td>{{ item.purpose or '' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="2" style="text-align:right;">Итого позиций: {{ items | length }}</td>
+                <td class="center">{{ items | sum(attribute='quantity') | int }}</td>
+                <td colspan="3"></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <!-- ═══ ПРИМЕЧАНИЕ ═══ -->
+    {% if document.notes %}
+    <div class="notes-section">
+        <div class="notes-label">Примечание:</div>
+        <div class="notes-box">{{ document.notes }}</div>
+    </div>
+    {% endif %}
+
+    <!-- ═══ СТАТУС ═══ -->
+    <div style="margin: 4mm 0; font-size:10pt;">
+        <strong>Статус документа:</strong>
+        {% if document.status == 'posted' %}
+            Проведён ✓
+        {% elif document.status == 'draft' %}
+            Черновик (не проведён)
+        {% else %}
+            {{ document.status }}
+        {% endif %}
+        {% if document.posted_at %}
+            &nbsp;·&nbsp; Проведён: {{ format_datetime(document.posted_at) if document.posted_at else '' }}
+        {% endif %}
+    </div>
+
+    <!-- ═══ ПОДПИСИ ═══ -->
+    <div class="signatures">
+        <div class="sig-block">
+            <div class="sig-role">Выдал:</div>
+            <div class="sig-name-line">{{ document.created_by_name or '' }}</div>
+            <div class="sig-name-hint">(ФИО / подпись)</div>
+            <div class="sig-date-line">
+                <span>Дата:</span>
+                <div class="sig-date-blank"></div>
+            </div>
+        </div>
+
+        <div class="sig-block">
+            <div class="sig-role">Получил:</div>
+            <div class="sig-name-line">{{ document.employee_name or '' }}</div>
+            <div class="sig-name-hint">(ФИО / подпись)</div>
+            <div class="sig-date-line">
+                <span>Дата:</span>
+                <div class="sig-date-blank"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ ПОДВАЛ ═══ -->
+    <div class="footer">
+        <span>АНО «НПЦ БАС ТО» · Улица Ивановского 4/6, Томск</span>
+        <span>Документ сформирован системой учёта активов</span>
+    </div>
+
+</div>
+
+<script>
+(function() {
+    fetch('{{ url_for("notifications.api_qr_document", id=document.id) }}')
+        .then(r => r.json())
+        .then(d => {
+            if (d.qr) {
+                document.getElementById('qrImg').src = d.qr;
+                document.getElementById('qrImg').style.display = 'block';
+                document.getElementById('qrHint').style.display = 'none';
+            }
+        }).catch(() => {});
+})();
+</script>
+</body>
+</html>

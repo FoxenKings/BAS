@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}{% if employee %}{{ get_translation('employees', 'edit_title') }}{% else %}{{ get_translation('employees', 'new_title') }}{% endif %}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="px-3 pt-2">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home"></i> Главная</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('employees.employees_list') }}">Сотрудники</a></li>
+        <li class="breadcrumb-item active">{% if employee %}Редактировать{% else %}Создать{% endif %}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-{% if employee %}edit{% else %}plus{% endif %}"></i>
+            {% if employee %}{{ get_translation('employees', 'edit_title') }}{% else %}{{ get_translation('employees', 'new_title') }}{% endif %}
+        </h1>
+        <a href="{{ url_for('employees.employees_list') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> {{ get_translation('common', 'back') }}
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" id="employeeForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="employee_number" class="form-label">{{ get_translation('employees', 'employee_number') }}</label>
+                        <input type="text" class="form-control" id="employee_number" name="employee_number" 
+                               value="{{ employee.employee_number if employee else '' }}"
+                               placeholder="{{ get_translation('employees', 'employee_number_placeholder') }}">
+                        <div class="form-text">{{ get_translation('employees', 'employee_number_help') }}</div>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="last_name" class="form-label">{{ get_translation('employees', 'last_name') }} <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="last_name" name="last_name" 
+                               value="{{ employee.last_name if employee else '' }}" required
+                               placeholder="{{ get_translation('employees', 'last_name_placeholder') }}">
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="first_name" class="form-label">{{ get_translation('employees', 'first_name') }} <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="first_name" name="first_name" 
+                               value="{{ employee.first_name if employee else '' }}" required
+                               placeholder="{{ get_translation('employees', 'first_name_placeholder') }}">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="middle_name" class="form-label">{{ get_translation('employees', 'middle_name') }}</label>
+                        <input type="text" class="form-control" id="middle_name" name="middle_name" 
+                               value="{{ employee.middle_name if employee else '' }}"
+                               placeholder="{{ get_translation('employees', 'middle_name_placeholder') }}">
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="department_id" class="form-label">{{ get_translation('departments', 'title') }}</label>
+                        <select class="form-select" id="department_id" name="department_id">
+                            <option value="">-- {{ get_translation('common', 'none') }} --</option>
+                            {% for dept in departments %}
+                            <option value="{{ dept.id }}" {% if employee and employee.department_id == dept.id %}selected{% endif %}>
+                                {{ dept.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="position" class="form-label">{{ get_translation('employees', 'position') }}</label>
+                        <input type="text" class="form-control" id="position" name="position" 
+                               value="{{ employee.position if employee else '' }}"
+                               placeholder="{{ get_translation('employees', 'position_placeholder') }}">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="phone" class="form-label">{{ get_translation('common', 'phone') }}</label>
+                        <input type="tel" class="form-control" id="phone" name="phone" 
+                               value="{{ employee.phone if employee else '' }}"
+                               placeholder="+7 (XXX) XXX-XX-XX">
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="email" class="form-label">{{ get_translation('common', 'email') }}</label>
+                        <input type="email" class="form-control" id="email" name="email" 
+                               value="{{ employee.email if employee else '' }}"
+                               placeholder="employee@example.com">
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="hire_date" class="form-label">{{ get_translation('employees', 'hire_date') }}</label>
+                        <input type="date" class="form-control" id="hire_date" name="hire_date" 
+                               value="{{ employee.hire_date if employee else '' }}">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="birth_date" class="form-label">{{ get_translation('employees', 'birth_date') }}</label>
+                        <input type="date" class="form-control" id="birth_date" name="birth_date" 
+                               value="{{ employee.birth_date if employee else '' }}">
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="passport_data" class="form-label">{{ get_translation('employees', 'passport_data') }}</label>
+                        <input type="text" class="form-control" id="passport_data" name="passport_data" 
+                               value="{{ employee.passport_data if employee else '' }}"
+                               placeholder="{{ get_translation('employees', 'passport_placeholder') }}">
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="inn" class="form-label">{{ get_translation('employees', 'inn') }}</label>
+                        <input type="text" class="form-control" id="inn" name="inn" 
+                               value="{{ employee.inn if employee else '' }}" maxlength="12"
+                               placeholder="12 цифр">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="address" class="form-label">{{ get_translation('employees', 'address') }}</label>
+                        <textarea class="form-control" id="address" name="address" rows="2" 
+                                  placeholder="{{ get_translation('employees', 'address_placeholder') }}">{{ employee.address if employee else '' }}</textarea>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="notes" class="form-label">{{ get_translation('employees', 'notes') }}</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="2" 
+                                  placeholder="{{ get_translation('employees', 'notes_placeholder') }}">{{ employee.notes if employee else '' }}</textarea>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ get_translation('common', 'status') }}</label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+                                   {% if not employee or employee.is_active %}checked{% endif %}>
+                            <label class="form-check-label" for="is_active">{{ get_translation('employees', 'active') }}</label>
+                        </div>
+                        <div class="form-text">{{ get_translation('employees', 'active_help') }}</div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="dismissal_date" class="form-label">{{ get_translation('employees', 'dismissal_date') }}</label>
+                        <input type="date" class="form-control" id="dismissal_date" name="dismissal_date" 
+                               value="{{ employee.dismissal_date if employee else '' }}">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> {{ get_translation('common', 'save') }}
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Форматирование телефона
+document.getElementById('phone')?.addEventListener('input', function(e) {
+    let x = this.value.replace(/\D/g, '').match(/(\d{0,1})(\d{0,3})(\d{0,3})(\d{0,2})(\d{0,2})/);
+    if (x) {
+        this.value = !x[2] ? x[1] : 
+                     '+' + x[1] + ' (' + x[2] + ') ' + 
+                     (x[3] ? x[3] : '') + 
+                     (x[4] ? '-' + x[4] : '') + 
+                     (x[5] ? '-' + x[5] : '');
+    }
+});
+
+// Валидация ИНН
+document.getElementById('inn')?.addEventListener('input', function(e) {
+    this.value = this.value.replace(/[^0-9]/g, '');
+});
+
+// Автоматическое заполнение табельного номера
+document.getElementById('employee_number')?.addEventListener('focus', function() {
+    if (!this.value) {
+        var year = new Date().getFullYear();
+        var random = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+        this.value = 'EMP-' + year + '-' + random;
+    }
+});
+</script>
+{% endblock %}

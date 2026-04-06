@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}{{ location.name }} - {{ get_translation('locations', 'title') }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-map-marker-alt"></i> {{ location.name }}
+        </h1>
+        <div>
+            <a href="{{ url_for('employees.locations_list') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> {{ get_translation('common', 'back') }}
+            </a>
+            {% if current_user.role == 'admin' %}
+            <a href="{{ url_for('employees.edit_location', id=location.id) }}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> {{ get_translation('common', 'edit') }}
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-info-circle"></i> {{ get_translation('locations', 'info') }}
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 40%;">{{ get_translation('common', 'code') }}:</th>
+                            <td><code>{{ location.code }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('common', 'name') }}:</th>
+                            <td>{{ location.name }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('locations', 'type') }}:</th>
+                            <td>
+                                {% if location.type == 'office' %}
+                                <span class="badge bg-info">{{ get_translation('locations', 'type_office') }}</span>
+                                {% elif location.type == 'warehouse' %}
+                                <span class="badge bg-warning">{{ get_translation('locations', 'type_warehouse') }}</span>
+                                {% elif location.type == 'production' %}
+                                <span class="badge bg-success">{{ get_translation('locations', 'type_production') }}</span>
+                                {% elif location.type == 'department' %}
+                                <span class="badge bg-secondary">{{ get_translation('locations', 'type_department') }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('locations', 'parent') }}:</th>
+                            <td>
+                                {% if location.parent_id %}
+                                <a href="{{ url_for('employees.location_detail', id=location.parent_id) }}">{{ location.parent_name }}</a>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('departments', 'title') }}:</th>
+                            <td>
+                                {% if location.department_id %}
+                                <a href="{{ url_for('employees.department_detail', id=location.department_id) }}">{{ location.department_name }}</a>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('locations', 'responsible') }}:</th>
+                            <td>
+                                {% if location.responsible_id %}
+                                <a href="{{ url_for('employees.view_employee', id=location.responsible_id) }}">{{ location.responsible_name }}</a>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('locations', 'building') }}:</th>
+                            <td>{{ location.building or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('locations', 'floor') }}:</th>
+                            <td>{{ location.floor or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('locations', 'room') }}:</th>
+                            <td>{{ location.room or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('common', 'status') }}:</th>
+                            <td>
+                                {% if location.is_active %}
+                                <span class="badge bg-success">{{ get_translation('common', 'active') }}</span>
+                                {% else %}
+                                <span class="badge bg-danger">{{ get_translation('common', 'inactive') }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{{ get_translation('common', 'created_at') }}:</th>
+                            <td>{{ format_datetime(location.created_at) }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <!-- Дочерние местоположения -->
+            {% if children %}
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-sitemap"></i> {{ get_translation('locations', 'children') }}
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>{{ get_translation('common', 'name') }}</th>
+                                    <th>{{ get_translation('locations', 'type') }}</th>
+                                    <th>{{ get_translation('common', 'actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for child in children %}
+                                <tr>
+                                    <td>
+                                        <i class="fas fa-map-pin me-2 text-primary"></i>
+                                        <a href="{{ url_for('employees.location_detail', id=child.id) }}">{{ child.name }}</a>
+                                    </td>
+                                    <td>
+                                        {% if child.type == 'office' %}
+                                        <span class="badge bg-info">{{ get_translation('locations', 'type_office') }}</span>
+                                        {% elif child.type == 'warehouse' %}
+                                        <span class="badge bg-warning">{{ get_translation('locations', 'type_warehouse') }}</span>
+                                        {% elif child.type == 'production' %}
+                                        <span class="badge bg-success">{{ get_translation('locations', 'type_production') }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('employees.location_detail', id=child.id) }}" class="btn btn-sm btn-outline-info" title="{{ get_translation('common', 'view') }}">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Склады в этом местоположении -->
+            {% if warehouses %}
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-warehouse"></i> {{ get_translation('warehouses', 'title') }}
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>{{ get_translation('common', 'code') }}</th>
+                                    <th>{{ get_translation('common', 'name') }}</th>
+                                    <th>{{ get_translation('warehouses', 'type') }}</th>
+                                    <th>{{ get_translation('common', 'actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for w in warehouses %}
+                                <tr>
+                                    <td><code>{{ w.code }}</code></td>
+                                    <td><a href="{{ url_for('warehouses.warehouse_stocks', id=w.id) }}">{{ w.name }}</a></td>
+                                    <td>
+                                        {% if w.type == 'general' %}
+                                        <span class="badge bg-primary">{{ get_translation('warehouses', 'type_general') }}</span>
+                                        {% elif w.type == 'materials' %}
+                                        <span class="badge bg-info">{{ get_translation('warehouses', 'type_materials') }}</span>
+                                        {% elif w.type == 'tools' %}
+                                        <span class="badge bg-warning">{{ get_translation('warehouses', 'type_tools') }}</span>
+                                        {% elif w.type == 'consumables' %}
+                                        <span class="badge bg-success">{{ get_translation('warehouses', 'type_consumables') }}</span>
+                                        {% elif w.type == 'quarantine' %}
+                                        <span class="badge bg-danger">{{ get_translation('warehouses', 'type_quarantine') }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('warehouses.warehouse_stocks', id=w.id) }}" class="btn btn-sm btn-outline-success" title="{{ get_translation('warehouses', 'stocks') }}">
+                                            <i class="fas fa-boxes"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if not children and not warehouses %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> {{ get_translation('locations', 'no_children') }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
